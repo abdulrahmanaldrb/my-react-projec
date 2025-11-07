@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>5AI Web Page Builder</title>
+    <style>
+      /* Basic reset and styles to make the app look good from the start */
+      body, html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+        background-color: #ffffff; /* Default light mode background */
+        color: #111827; /* Default light mode text */
+      }
+      .dark, .dark body, .dark html {
+        background-color: #111827; /* Corresponds to bg-gray-900 */
+        color: #f9fafb;
+      }
+      #root {
+        height: 100%;
+      }
+    </style>
+    <script>
+      // Flicker-free dark mode
+      (function() {
+        const theme = localStorage.getItem('theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      })();
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // Enable class-based dark mode
+        }
+    </script>
+    <link rel="stylesheet" href="https://aistudiocdn.com/allotment@^1.20.4/dist/style.css" />
+    <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0",
+    "jszip": "https://aistudiocdn.com/jszip@^3.10.1",
+    "file-saver": "https://aistudiocdn.com/file-saver@^2.0.5",
+    "firebase/": "https://aistudiocdn.com/firebase@^12.5.0/",
+    "allotment/": "https://aistudiocdn.com/allotment@^1.20.4/",
+    "allotment": "https://aistudiocdn.com/allotment@^1.20.4"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>
