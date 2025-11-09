@@ -3,7 +3,9 @@
 // Fix: Changed React import to namespace import to resolve JSX type errors.
 import * as React from 'react';
 import { Project, UserCredentials } from '../types';
-import { PlusIcon, TrashIcon, PencilIcon, CheckIcon, XMarkIcon, ShareIcon, ClockIcon, CheckBadgeIcon, UserIcon, SunIcon, MoonIcon, Cog6ToothIcon, UsersIcon } from './icons';
+// Fix: Removed import for 'ShareIcon' as it does not exist in the icons file.
+import { PlusIcon, TrashIcon, PencilIcon, CheckIcon, XMarkIcon, ClockIcon, CheckBadgeIcon, UserIcon, SunIcon, MoonIcon, Cog6ToothIcon, UsersIcon, GlobeAltIcon } from './icons';
+import { useLanguage } from '../App';
 
 interface ProjectsDrawerProps {
   isOpen: boolean;
@@ -22,14 +24,14 @@ interface ProjectsDrawerProps {
   currentUser: UserCredentials;
 }
 
-const ProjectStatusIcon = ({ status }: { status: 'pending' | 'approved' | 'rejected' | 'none' }) => {
+const ProjectStatusIcon: React.FC<{ status: 'pending' | 'approved' | 'rejected' | 'none', t: (key: string) => string }> = ({ status, t }) => {
     switch(status) {
         case 'pending':
-            return <ClockIcon className="w-4 h-4 text-yellow-500 dark:text-yellow-400" title="Pending Review"/>
+            return <ClockIcon className="w-4 h-4 text-yellow-500 dark:text-yellow-400" title={t('projects.statusPending')}/>
         case 'approved':
-            return <CheckBadgeIcon className="w-4 h-4 text-green-500 dark:text-green-400" title="Live in Marketplace"/>
+            return <CheckBadgeIcon className="w-4 h-4 text-green-500 dark:text-green-400" title={t('projects.statusApproved')}/>
         case 'rejected':
-            return <XMarkIcon className="w-4 h-4 text-red-500 dark:text-red-400" title="Submission Rejected"/>
+            return <XMarkIcon className="w-4 h-4 text-red-500 dark:text-red-400" title={t('projects.statusRejected')}/>
         default:
             return null;
     }
@@ -51,6 +53,7 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({
   onViewSettings,
   currentUser,
 }) => {
+  const { t, language, setLanguage } = useLanguage();
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [editingName, setEditingName] = React.useState('');
   const inputRef = React.useRef<HTMLInputElement>(null);
@@ -103,8 +106,8 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({
         }`}
       >
         <header className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Projects</h2>
-            <button onClick={onClose} className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors" title="Close">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{t('projects.title')}</h2>
+            <button onClick={onClose} className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors" title={t('common.close')}>
                 <XMarkIcon className="w-5 h-5" />
             </button>
         </header>
@@ -115,7 +118,7 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({
                 className="w-full flex items-center justify-center gap-2 p-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
              >
                  <PlusIcon className="w-4 h-4" />
-                 New Project
+                 {t('projects.newProject')}
              </button>
         </div>
 
@@ -141,10 +144,10 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({
                                 ) : (
                                     <button onClick={() => onSelectProject(project.id)} className="flex-grow text-left truncate px-1 flex flex-col">
                                         <div className="flex items-center gap-2">
-                                            {project.shareData?.status !== 'none' && <ProjectStatusIcon status={project.shareData?.status || 'none'} />}
+                                            {project.shareData?.status !== 'none' && <ProjectStatusIcon status={project.shareData?.status || 'none'} t={t} />}
                                             <span className="font-medium truncate">{project.name}</span>
                                         </div>
-                                        {!isOwner && <span className="text-xs text-gray-500 dark:text-gray-400 ml-6">Shared by {ownerEmail}</span>}
+                                        {!isOwner && <span className="text-xs text-gray-500 dark:text-gray-400 ms-6">{t('projects.sharedBy', { email: ownerEmail })}</span>}
                                     </button>
                                 )}
 
@@ -153,13 +156,13 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({
                                         <button onClick={handleRenameSubmit} className="p-1 text-gray-500 dark:text-gray-400 hover:text-green-500 dark:hover:text-green-400 transition-colors"><CheckIcon className="w-4 h-4" /></button>
                                     ) : (
                                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
-                                            <button onClick={() => onShareProject(project)} className="p-1 text-gray-500 dark:text-gray-400 hover:text-purple-500 dark:hover:text-purple-400 transition-colors" title="Collaborate"><UsersIcon className="w-4 h-4" /></button>
-                                            {isOwner && <button onClick={() => handleRenameClick(project)} className="p-1 text-gray-500 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors" title="Rename"><PencilIcon className="w-4 h-4" /></button>}
+                                            <button onClick={() => onShareProject(project)} className="p-1 text-gray-500 dark:text-gray-400 hover:text-purple-500 dark:hover:text-purple-400 transition-colors" title={t('header.collaborate')}><UsersIcon className="w-4 h-4" /></button>
+                                            {isOwner && <button onClick={() => handleRenameClick(project)} className="p-1 text-gray-500 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 transition-colors" title={t('projects.rename')}><PencilIcon className="w-4 h-4" /></button>}
                                             {isOwner && <button 
                                                 onClick={() => onDeleteProject(project.id)} 
                                                 disabled={projects.length <= 1}
                                                 className="p-1 text-gray-500 dark:text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors disabled:text-gray-600 disabled:cursor-not-allowed" 
-                                                title={projects.length > 1 ? "Delete" : "Cannot delete the only project"}
+                                                title={projects.length > 1 ? t('common.delete') : t('toasts.deleteOnlyProjectError')}
                                             >
                                                 <TrashIcon className="w-4 h-4" />
                                             </button>}
@@ -177,25 +180,30 @@ const ProjectsDrawer: React.FC<ProjectsDrawerProps> = ({
              <div className="space-y-1.5">
                 <button onClick={onViewMyProfile} className="w-full flex items-center gap-3 text-left p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                     <UserIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200">My Profile</span>
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{t('userProfile.myProfile')}</span>
                 </button>
-                <button 
-                    onClick={() => onSetTheme(currentTheme === 'light' ? 'dark' : 'light')} 
-                    className="w-full flex items-center justify-between gap-3 text-left p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                >
-                    <div className="flex items-center gap-3">
-                        {currentTheme === 'dark' ? <MoonIcon className="w-5 h-5 text-gray-600 dark:text-gray-300"/> : <SunIcon className="w-5 h-5 text-gray-600 dark:text-gray-300"/>}
-                        <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Theme</span>
-                    </div>
-                    <div className="flex items-center bg-gray-200 dark:bg-gray-700 rounded-full p-0.5 w-[44px]">
-                        <div className={`p-1 rounded-full transition-transform duration-300 ${currentTheme === 'dark' ? 'translate-x-full' : ''}`}>
-                             {currentTheme === 'light' ? <SunIcon className="w-4 h-4 text-gray-700 bg-white rounded-full p-0.5"/> : <MoonIcon className="w-4 h-4 text-white bg-gray-900 rounded-full p-0.5"/>}
+                 <div className="flex items-center gap-1.5">
+                     <button 
+                        onClick={() => onSetTheme(currentTheme === 'light' ? 'dark' : 'light')} 
+                        className="w-full flex items-center justify-between gap-3 text-left p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    >
+                        <div className="flex items-center gap-3">
+                            {currentTheme === 'dark' ? <MoonIcon className="w-5 h-5 text-gray-600 dark:text-gray-300"/> : <SunIcon className="w-5 h-5 text-gray-600 dark:text-gray-300"/>}
+                            <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{t('settings.themeTitle')}</span>
                         </div>
-                    </div>
-                </button>
+                        <div className="flex items-center bg-gray-200 dark:bg-gray-700 rounded-full p-0.5 w-[44px]">
+                            <div className={`p-1 rounded-full transition-transform duration-300 ${currentTheme === 'dark' ? 'translate-x-full' : ''}`}>
+                                 {currentTheme === 'light' ? <SunIcon className="w-4 h-4 text-gray-700 bg-white rounded-full p-0.5"/> : <MoonIcon className="w-4 h-4 text-white bg-gray-900 rounded-full p-0.5"/>}
+                            </div>
+                        </div>
+                    </button>
+                    <button onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')} className="p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700" title={t('settings.languageTitle')}>
+                         <GlobeAltIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+                    </button>
+                 </div>
                 <button onClick={onViewSettings} className="w-full flex items-center gap-3 text-left p-2 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
                     <Cog6ToothIcon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
-                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200">Settings</span>
+                    <span className="text-sm font-medium text-gray-800 dark:text-gray-200">{t('settings.title')}</span>
                 </button>
              </div>
         </div>

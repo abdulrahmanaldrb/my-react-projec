@@ -24,6 +24,11 @@ const MarketplaceProjectViewer: React.FC<MarketplaceProjectViewerProps> = ({ pro
     const iframeRef = React.useRef<HTMLIFrameElement>(null);
     const [activeTab, setActiveTab] = React.useState<'reviews' | 'preview' | 'code' | 'chat'>('reviews');
 
+    const handleFileSelectFromChat = (fileName: string) => {
+        setSelectedFile(fileName);
+        setActiveTab('code');
+    };
+
     const canDownload = project.shareData?.permissions.allowDownload ?? false;
     
     // Check for new and old permission structures for cloning
@@ -71,12 +76,16 @@ const MarketplaceProjectViewer: React.FC<MarketplaceProjectViewerProps> = ({ pro
                     isLoading={false}
                     onSubmit={() => {}}
                     onSuggestionClick={() => {}}
+                    // Fix: Added missing onFileSelect prop.
+                    onFileSelect={handleFileSelectFromChat}
                     activeProjectName={project.name}
                     onOpenDrawerRequest={() => {}}
                     onLogout={() => {}}
                     userEmail={`by ${project.creatorEmail}`}
                     isChatDisabled={true}
                     onCritiqueRequest={() => {}}
+                    // Fix: Add missing onStopGeneration prop to ChatPanel.
+                    onStopGeneration={() => {}}
                 />
             </div>
 

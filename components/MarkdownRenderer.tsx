@@ -2,6 +2,7 @@
 
 // Fix: Changed React import to namespace import to resolve JSX type errors.
 import * as React from 'react';
+import { CheckIcon, ClipboardIcon } from './icons';
 
 // Regex to capture inline markdown formats: links, bold, italic, and code.
 const inlineRegex = /\[([^\]]+)\]\(([^)]+)\)|\*\*([^\*]+)\*\*|\*([^\*]+)\*|`([^`]+)`/g;
@@ -45,92 +46,120 @@ const parseInline = (text: string): React.ReactNode[] => {
   return elements;
 };
 
+
+// Fix: Defined props interface and used React.FC to correctly type the CodeBlock component.
+interface CodeBlockProps {
+    code: string;
+    language: string;
+}
+
+const CodeBlock: React.FC<CodeBlockProps> = ({ code, language }) => {
+    const [copied, setCopied] = React.useState(false);
+    
+    const handleCopy = () => {
+        navigator.clipboard.writeText(code).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
+    };
+
+    return (
+        <div className="bg-gray-900/70 rounded-md my-2 relative group text-left">
+            <div className="text-xs text-gray-400 px-4 py-1.5 border-b border-gray-700/50 flex justify-between items-center">
+                <span>{language || 'code'}</span>
+                 <button
+                    onClick={handleCopy}
+                    className="flex items-center gap-1.5 p-1 bg-gray-700 rounded-md text-gray-300 transition-colors hover:bg-gray-600"
+                >
+                    {copied ? (
+                        <>
+                            <CheckIcon className="w-3.5 h-3.5 text-green-400" />
+                            <span className="text-xs">Copied!</span>
+                        </>
+                    ) : (
+                        <>
+                           <ClipboardIcon className="w-3.5 h-3.5" />
+                           <span className="text-xs">Copy</span>
+                        </>
+                    )}
+                </button>
+            </div>
+            <pre className="p-4 overflow-x-auto">
+                <code className={`language-${language} text-sm`}>
+                    {code}
+                </code>
+            </pre>
+        </div>
+    );
+};
+
+
 /**
  * A lightweight component to render markdown content into styled React components.
  */
 const MarkdownRenderer: React.FC<{ content: string }> = ({ content }) => {
-    const lines = content.split('\n');
-    const elements: React.ReactNode[] = [];
-    let currentListType: 'ul' | 'ol' | null = null;
-    let listItems: React.ReactNode[] = [];
+    const blocks = content.split(/(```[\s\S]*?```)/g);
 
-    const closeCurrentList = () => {
-        if (currentListType && listItems.length > 0) {
-            const listKey = `list-${elements.length}`;
-            if (currentListType === 'ul') {
-                elements.push(<ul key={listKey} className="list-disc list-inside space-y-1 my-2 pl-2">{listItems}</ul>);
-            } else {
-                elements.push(<ol key={listKey} className="list-decimal list-inside space-y-1 my-2 pl-2">{listItems}</ol>);
-            }
-        }
-        currentListType = null;
-        listItems = [];
-    };
+    return (
+        <div className="text-sm space-y-3 prose-p:my-0">
+            {blocks.map((block, index) => {
+                if (!block) return null;
+                const codeBlockMatch = block.match(/^```(\w*)\n?([\s\S]*?)```$/);
+                if (codeBlockMatch) {
+                    const [, language, code] = codeBlockMatch;
+                    return <CodeBlock key={index} language={language} code={code} />;
+                }
 
-    lines.forEach((line, index) => {
-        const lineKey = `line-${index}`;
-        // Headings
-        if (line.startsWith('# ')) {
-            closeCurrentList();
-            elements.push(<h1 key={lineKey} className="text-xl font-bold mt-4 mb-2 pb-1 border-b border-gray-600">{parseInline(line.substring(2))}</h1>);
-            return;
-        }
-        if (line.startsWith('## ')) {
-            closeCurrentList();
-            elements.push(<h2 key={lineKey} className="text-lg font-bold mt-3 mb-1.5">{parseInline(line.substring(3))}</h2>);
-            return;
-        }
-        if (line.startsWith('### ')) {
-            closeCurrentList();
-            elements.push(<h3 key={lineKey} className="text-base font-bold mt-2 mb-1">{parseInline(line.substring(4))}</h3>);
-            return;
-        }
+                // Not a code block, so parse other markdown elements
+                const elements: React.ReactNode[] = [];
+                const lines = block.split('\n');
+                let currentListType: 'ul' | 'ol' | null = null;
+                let listItems: React.ReactNode[] = [];
 
-        // Horizontal Rule
-        if (line.match(/^(\s*---\s*)$/)) {
-            closeCurrentList();
-            elements.push(<hr key={lineKey} className="my-4 border-gray-600" />);
-            return;
-        }
+                const closeCurrentList = () => {
+                    if (currentListType && listItems.length > 0) {
+                        const listKey = `list-${index}-${elements.length}`;
+                        if (currentListType === 'ul') {
+                            elements.push(<ul key={listKey} className="list-disc list-inside space-y-1 my-2 pl-2">{listItems}</ul>);
+                        } else {
+                            elements.push(<ol key={listKey} className="list-decimal list-inside space-y-1 my-2 pl-2">{listItems}</ol>);
+                        }
+                    }
+                    currentListType = null;
+                    listItems = [];
+                };
 
-        // Blockquote
-        if (line.startsWith('> ')) {
-            closeCurrentList();
-            elements.push(<blockquote key={lineKey} className="pl-4 border-l-4 border-gray-500 italic text-gray-400">{parseInline(line.substring(2))}</blockquote>);
-            return;
-        }
+                lines.forEach((line, lineIndex) => {
+                    const lineKey = `line-${index}-${lineIndex}`;
+                    if (line.startsWith('# ')) { closeCurrentList(); elements.push(<h1 key={lineKey} className="text-xl font-bold mt-4 mb-2 pb-1 border-b border-gray-600">{parseInline(line.substring(2))}</h1>); return; }
+                    if (line.startsWith('## ')) { closeCurrentList(); elements.push(<h2 key={lineKey} className="text-lg font-bold mt-3 mb-1.5">{parseInline(line.substring(3))}</h2>); return; }
+                    if (line.startsWith('### ')) { closeCurrentList(); elements.push(<h3 key={lineKey} className="text-base font-bold mt-2 mb-1">{parseInline(line.substring(4))}</h3>); return; }
+                    if (line.match(/^(\s*---\s*)$/)) { closeCurrentList(); elements.push(<hr key={lineKey} className="my-4 border-gray-600" />); return; }
+                    if (line.startsWith('> ')) { closeCurrentList(); elements.push(<blockquote key={lineKey} className="pl-4 border-l-4 border-gray-500 italic text-gray-400">{parseInline(line.substring(2))}</blockquote>); return; }
 
-        // Unordered List
-        const ulMatch = line.match(/^(\s*-\s+)(.*)/);
-        if (ulMatch) {
-            if (currentListType !== 'ul') {
+                    const ulMatch = line.match(/^(\s*-\s+)(.*)/);
+                    if (ulMatch) {
+                        if (currentListType !== 'ul') { closeCurrentList(); currentListType = 'ul'; }
+                        listItems.push(<li key={lineKey}>{parseInline(ulMatch[2])}</li>); return;
+                    }
+
+                    const olMatch = line.match(/^(\s*\d+\.\s+)(.*)/);
+                    if (olMatch) {
+                        if (currentListType !== 'ol') { closeCurrentList(); currentListType = 'ol'; }
+                        listItems.push(<li key={lineKey}>{parseInline(olMatch[2])}</li>); return;
+                    }
+
+                    closeCurrentList();
+                    if (line.trim() !== '') {
+                        elements.push(<p key={lineKey}>{parseInline(line)}</p>);
+                    }
+                });
+
                 closeCurrentList();
-                currentListType = 'ul';
-            }
-            listItems.push(<li key={lineKey}>{parseInline(ulMatch[2])}</li>);
-            return;
-        }
-
-        // Ordered List
-        const olMatch = line.match(/^(\s*\d+\.\s+)(.*)/);
-        if (olMatch) {
-            if (currentListType !== 'ol') {
-                closeCurrentList();
-                currentListType = 'ol';
-            }
-            listItems.push(<li key={lineKey}>{parseInline(olMatch[2])}</li>);
-            return;
-        }
-
-        closeCurrentList();
-        if (line.trim() !== '') {
-            elements.push(<p key={lineKey}>{parseInline(line)}</p>);
-        }
-    });
-
-    closeCurrentList();
-
-    return <div className="text-sm space-y-3 prose-p:my-0">{elements}</div>;
+                return <React.Fragment key={index}>{elements}</React.Fragment>;
+            })}
+        </div>
+    );
 };
 
 export default MarkdownRenderer;

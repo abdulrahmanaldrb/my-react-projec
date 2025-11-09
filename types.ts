@@ -12,17 +12,20 @@ export interface ResponseMessage {
   answer?: string;
   suggestions: string[];
   footer?: string;
+  rawMarkdown?: string;
 }
 
 export interface GeminiResponse {
   files: ProjectFile[];
   responseMessage: ResponseMessage;
+  rawMarkdown: string;
 }
 
 export interface ChatMessage {
   role: 'user' | 'model' | 'system';
   content: string;
   suggestions?: string[];
+  attachedFiles?: ProjectFile[]; // For live streaming UI
 }
 
 export interface SharePermissions {
@@ -39,6 +42,14 @@ export interface ShareData {
   reviewedAt?: any; // For Firestore serverTimestamp
 }
 
+export interface ProjectChatMessage {
+  id: string;
+  userId: string;
+  userEmail: string;
+  content: string;
+  timestamp: any; // Firestore serverTimestamp
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -53,6 +64,7 @@ export interface Project {
   ownerId: string;
   collaborators: { [userId: string]: { email: string, role: 'owner' | 'editor' } };
   memberIds: string[];
+  projectChat?: ProjectChatMessage[];
 }
 
 // Fix: Add and export UserCredentials interface to resolve missing type errors.

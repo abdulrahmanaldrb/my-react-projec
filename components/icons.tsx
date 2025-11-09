@@ -64,8 +64,8 @@ export const ArrowRightIcon = ({ className }: { className?: string }) => (
 );
 
 export const RefreshIcon = ({ className }: { className?: string }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className={className || "w-5 h-5"}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.664 0l3.181-3.183m-11.664 0l3.181-3.183a8.25 8.25 0 0111.664 0l3.181 3.183" />
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-5 h-5"}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348A9.72 9.72 0 1 1 2.25 10.5h3.001" />
     </svg>
 );
 
@@ -155,9 +155,35 @@ export const ChevronRightIcon = ({ className }: { className?: string }) => (
     </svg>
 );
 
-export const ShareIcon = ({ className }: { className?: string }) => (
+export const ChevronDownIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.195.025.39.05.588.08a2.25 2.25 0 0 1 1.632 3.109 2.25 2.25 0 0 1-1.632 1.282 2.25 2.25 0 0 0-.588.081m6.162-4.433a2.25 2.25 0 0 1 3.109 1.632 2.25 2.25 0 0 1-1.282 1.632 2.25 2.25 0 0 0-.81 1.282m-4.433-6.162a2.25 2.25 0 0 1 1.632 3.109 2.25 2.25 0 0 1-3.109 1.632m0 0l-3.352 3.352a2.25 2.25 0 0 1-3.182-3.182l3.352-3.352m3.182 3.182 3.352-3.352m0 0a2.25 2.25 0 1 0-3.182 3.182M3 3h18v18H3V3z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="m19.94 8.25-7.44 7.5-7.44-7.5" />
+    </svg>
+);
+
+export const ChevronUpIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+  </svg>
+);
+
+
+export const CodeBracketIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M17.25 6.75 22.5 12l-5.25 5.25m-10.5 0L1.5 12l5.25-5.25m7.5-3-4.5 16.5" />
+  </svg>
+);
+
+// Fix: Added ClipboardIcon component.
+export const ClipboardIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v3.043c0 .317-.1.616-.266.868l-1.03 1.718c-.209.346-.598.57-1.02.57h-3.121c-.422 0-.811-.224-1.02-.57l-1.03-1.718A1.875 1.875 0 0 1 4.5 7.943V4.89c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V7.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
+  </svg>
+);
+
+export const PublishIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0 3 3m-3-3-3 3M15 9V5.25a2.25 2.25 0 0 0-2.25-2.25h-3a2.25 2.25 0 0 0-2.25 2.25v3.75m10.5-3.75c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125-1.125h-16.5c-.621 0-1.125-.504-1.125-1.125V6.375c0-.621.504-1.125 1.125-1.125h4.5" />
     </svg>
 );
 
@@ -183,12 +209,15 @@ export const StoreIcon = ({ className }: { className?: string }) => (
     </svg>
 );
 
-// Add StarIcon for the rating system.
-export const StarIcon = ({ className, fill = "none" }: { className?: string, fill?: string }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill={fill} strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345h5.584a.563.563 0 0 1 .321.988l-4.204 3.055a.563.563 0 0 0-.182.557l1.528 4.707a.562.562 0 0 1-.827.632l-4.204-3.055a.563.563 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.827-.632l1.528-4.707a.563.563 0 0 0-.182-.557l-4.204-3.055a.563.563 0 0 1 .321-.988h5.584a.563.563 0 0 0 .475-.345L11.48 3.5z" />
-    </svg>
-);
+// Fix: Update StarIcon props to resolve key prop type errors.
+export const StarIcon = (props: React.ComponentProps<'svg'> & { fill?: string }) => {
+    const { className, fill = "none", ...rest } = props;
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill={fill} strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"} {...rest}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 0 1 1.04 0l2.125 5.111a.563.563 0 0 0 .475.345h5.584a.563.563 0 0 1 .321.988l-4.204 3.055a.563.563 0 0 0-.182.557l1.528 4.707a.562.562 0 0 1-.827.632l-4.204-3.055a.563.563 0 0 0-.586 0L6.982 20.54a.562.562 0 0 1-.827-.632l1.528-4.707a.563.563 0 0 0-.182-.557l-4.204-3.055a.563.563 0 0 1 .321-.988h5.584a.563.563 0 0 0.475-.345L11.48 3.5z" />
+        </svg>
+    );
+};
 
 export const SunIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
@@ -228,13 +257,13 @@ export const GitHubIcon = ({ className }: { className?: string }) => (
 
 export const SparklesIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456ZM16.898 20.54 16.5 21.75l-.398-1.21a3.375 3.375 0 0 0-2.456-2.456L12.75 18l1.21-.398a3.375 3.375 0 0 0 2.456-2.456L16.5 14.25l.398 1.21a3.375 3.375 0 0 0 2.456 2.456l1.21.398-1.21.398a3.375 3.375 0 0 0-2.456 2.456Z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456zM16.898 20.54 16.5 21.75l-.398-1.21a3.375 3.375 0 0 0-2.456-2.456L12.75 18l1.21-.398a3.375 3.375 0 0 0 2.456-2.456L16.5 14.25l.398 1.21a3.375 3.375 0 0 0 2.456 2.456l1.21.398-1.21.398a3.375 3.375 0 0 0-2.456 2.456Z" />
     </svg>
 );
 
 export const Cog6ToothIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.26.716.51 1.02l.884.884c.27.27.64.417 1.02.417h1.28c.55 0 .94.469.94 1.11v2.594c0 .55-.398 1.02-.94 1.11l-1.28.213c-.374.063-.716.26-1.02.51l-.884.884c-.27.27-.417.64-.417 1.02v1.28c0 .55-.469.94-1.11.94h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.26-.716-.51-1.02l-.884-.884c-.27-.27-.64-.417-1.02-.417H4.94c-.55 0-.94-.469-.94-1.11V9.594c0 .55.398-1.02.94-1.11l1.28-.213c.374-.063.716-.26 1.02-.51l.884.884c.27.27.417-.64.417-1.02l.213-1.281zM12 8.25a3.75 3.75 0 1 0 0 7.5 3.75 3.75 0 0 0 0-7.5z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.26.716.51 1.02l.884.884c.27.27.64.417 1.02.417h1.28c.55 0 .94.469.94 1.11v2.594c0 .55-.398 1.02-.94 1.11l-1.28.213c-.374.063-.716.26-1.02.51l-.884.884c-.27.27-.417.64-.417 1.02v1.28c0 .55-.469.94-1.11.94h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.26-.716-.51-1.02l-.884-.884c-.27-.27-.64-.417-1.02-.417H4.94c-.55 0-.94-.469-.94-1.11V9.594c0 .55.398-1.02.94-1.11l1.28-.213c.374-.063.716.26 1.02-.51l.884.884c.27.27.417-.64.417-1.02l.213-1.281zM12 8.25a3.75 3.75 0 1 0 0 7.5 3.75 3.75 0 0 0 0-7.5z" />
     </svg>
 );
 
@@ -252,12 +281,24 @@ export const ChatBubbleLeftEllipsisIcon = ({ className }: { className?: string }
 
 export const LightBulbIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.311a6.01 6.01 0 0 1-1.5.189m1.5-.189a6.01 6.01 0 0 0 1.5.189m-1.5-3.75a6.01 6.01 0 0 1-1.5-.189m1.5.189a6.01 6.01 0 0 0 1.5-.189m0 0a6.01 6.01 0 0 1-3.75 0m0 0a6.01 6.01 0 0 1-1.5.189m1.5-.189a6.01 6.01 0 0 0-1.5.189m3.75-2.311a12.06 12.06 0 0 0-4.5 0" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.311a6.01 6.01 0 0 1-1.5.189m1.5-.189a6.01 6.01 0 0 0 1.5.189m-1.5-3.75a6.01 6.01 0 0 1-1.5-.189m1.5.189a6.01 6.01 0 0 0-1.5.189m0 0a6.01 6.01 0 0 1-3.75 0m0 0a6.01 6.01 0 0 1-1.5.189m1.5-.189a6.01 6.01 0 0 0-1.5.189m3.75-2.311a12.06 12.06 0 0 0-4.5 0" />
     </svg>
 );
 
 export const BellIcon = ({ className }: { className?: string }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
+    </svg>
+);
+
+export const GlobeAltIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c.24 0 .468-.02.69-.057M12 3c.24 0 .468.02.69.057M12 3a9.004 9.004 0 0 0-8.716 6.747M12 3a9.004 9.004 0 0 1 8.716 6.747m-1.423 0A3.748 3.748 0 0 0 12 15.75a3.748 3.748 0 0 0-5.277-2.493m10.554 0a3.748 3.748 0 0 1-5.277 2.493m5.277-2.493a3.748 3.748 0 0 1-5.277-2.493m0 0a3.748 3.748 0 0 1-5.277 2.493m0 0a3.748 3.748 0 0 1-5.277-2.493m-1.423 0A3.748 3.748 0 0 0 12 8.25a3.748 3.748 0 0 0-5.277 2.493m10.554 0a3.748 3.748 0 0 1-5.277-2.493" />
+    </svg>
+);
+
+export const StopIcon = ({ className }: { className?: string }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={className || "w-6 h-6"}>
+        <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25ZM9 8.25a.75.75 0 0 0-.75.75v6c0 .414.336.75.75.75h6a.75.75 0 0 0 .75-.75v-6a.75.75 0 0 0-.75-.75H9Z" clipRule="evenodd" />
     </svg>
 );

@@ -2,7 +2,7 @@
 import { doc, setDoc, getDocs, getDoc, deleteDoc, collection, updateDoc, serverTimestamp, collectionGroup, where, query, runTransaction, orderBy, increment, writeBatch, addDoc, onSnapshot, arrayUnion, arrayRemove, limit, QuerySnapshot, DocumentData } from "firebase/firestore";
 import { auth, db } from '../firebaseConfig';
 // Fix: Added AdminAnalyticsData to the import from types.ts.
-import { Project, ShareData, MarketplaceProject, PendingProject, Review, UserProfileData, Feedback, ReportedReview, ProjectInvitation, PasswordResetRequest, AdminDashboardStats, AdminUser, AdminAnalyticsData, Notification, Announcement, AIConfig } from '../types';
+import { Project, ShareData, MarketplaceProject, PendingProject, Review, UserProfileData, Feedback, ReportedReview, ProjectInvitation, PasswordResetRequest, AdminDashboardStats, AdminUser, AdminAnalyticsData, Notification, Announcement, AIConfig, ProjectChatMessage } from '../types';
 import { createNewProject } from '../constants';
 
 const getUserId = (): string | null => {
@@ -82,6 +82,26 @@ export const updateProject = async (projectId: string, updates: Partial<Project>
 
     const projectRef = doc(db, 'projects', projectId);
     await updateDoc(projectRef, updates);
+};
+
+export const sendProjectChatMessage = async (projectId: string, content: string): Promise<void> => {
+    const userId = getUserId();
+    const userEmail = getUserEmail();
+    if (!userId || !userEmail) throw new Error("User not authenticated.");
+
+    const projectRef = doc(db, 'projects', projectId);
+
+    const newMessage: ProjectChatMessage = {
+        id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        userId,
+        userEmail,
+        content,
+        timestamp: serverTimestamp(),
+    };
+
+    await updateDoc(projectRef, {
+        projectChat: arrayUnion(newMessage)
+    });
 };
 
 // Find a user by their email to get their UID.
@@ -225,7 +245,8 @@ export const getMarketplaceProjects = async (): Promise<MarketplaceProject[]> =>
     return snapshot.docs.map(doc => doc.data() as MarketplaceProject);
 };
 
-export const cloneMarketplaceProject = async (projectToClone: MarketplaceProject, options: { includeChat: boolean }): Promise<void> => {
+// Fix: Updated `cloneMarketplaceProject` to accept and pass the translation function `t` to `createNewProject`.
+export const cloneMarketplaceProject = async (projectToClone: MarketplaceProject, options: { includeChat: boolean }, t: (key: string) => string): Promise<void> => {
     const userId = getUserId();
     const userEmail = getUserEmail();
     if (!userId || !userEmail) throw new Error("User not authenticated.");
@@ -234,7 +255,7 @@ export const cloneMarketplaceProject = async (projectToClone: MarketplaceProject
     const originalProjectRef = doc(db, 'marketplace_projects', projectToClone.id);
     await updateDoc(originalProjectRef, { cloneCount: increment(1) });
 
-    const newProject = createNewProject(`Copy of ${projectToClone.name}`, userId, userEmail);
+    const newProject = createNewProject(`Copy of ${projectToClone.name}`, userId, userEmail, t);
     newProject.files = projectToClone.files;
     
     if (options.includeChat) {
@@ -349,10 +370,12 @@ export const addReview = async (projectId: string, rating: number, comment: stri
     });
 
     if (projectData) {
+        // Fix: Explicitly pass undefined for optional 'link' parameter to satisfy strict type checking.
         await createNotification(
             projectData.creatorId,
             'new_review',
             `${userEmail} left a ${rating}-star review on your project "${projectData.name}".`,
+            undefined
         );
     }
 };
@@ -407,10 +430,12 @@ export const addReviewReply = async (projectId: string, reviewId: string, replyT
 
         await updateDoc(reviewRef, { reply: { text: replyText, createdAt: serverTimestamp() } });
         
+        // Fix: Explicitly pass undefined for optional 'link' parameter to satisfy strict type checking.
         await createNotification(
             reviewData.userId,
             'review_reply',
             `The creator of "${projectName}" replied to your review.`,
+            undefined
         );
     }
 };
@@ -628,10 +653,12 @@ export const adminUpdateUserProfile = async (userId: string, updates: Partial<Us
     if (updates.isVerified === true) {
         const userSnap = await getDoc(userRef);
         if (userSnap.exists() && userSnap.data().isVerified !== true) {
+             // Fix: Explicitly pass undefined for optional 'link' parameter to satisfy strict type checking.
              await createNotification(
                 userId,
                 'account_verified',
-                'Congratulations! Your account has been verified by an administrator.'
+                'Congratulations! Your account has been verified by an administrator.',
+                undefined
             );
         }
     }
@@ -694,10 +721,12 @@ export const approveSubmission = async (project: Project): Promise<void> => {
     await updateDoc(doc(db, 'projects', project.id), { 'shareData.status': 'approved', 'shareData.reviewedAt': serverTimestamp() });
     await deleteDoc(doc(db, 'project_submissions', project.id));
 
+    // Fix: Explicitly pass undefined for optional 'link' parameter to satisfy strict type checking.
     await createNotification(
         project.ownerId,
         'project_approved',
         `Congratulations! Your project "${project.name}" is now live in the marketplace.`,
+        undefined
     );
 };
 
@@ -709,10 +738,12 @@ export const rejectSubmission = async (projectId: string): Promise<void> => {
         await updateDoc(projectRef, { 'shareData.status': 'rejected', 'shareData.reviewedAt': serverTimestamp() });
         await deleteDoc(doc(db, 'project_submissions', projectId));
 
+        // Fix: Explicitly pass undefined for optional 'link' parameter to satisfy strict type checking.
         await createNotification(
             projectData.ownerId,
             'project_rejected',
-            `Your project "${projectData.name}" was not approved for the marketplace.`
+            `Your project "${projectData.name}" was not approved for the marketplace.`,
+            undefined
         );
     }
 };

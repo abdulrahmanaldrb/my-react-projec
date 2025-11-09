@@ -1,44 +1,11 @@
 // services/geminiService.ts
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { GeminiResponse, ProjectFile, ChatMessage } from '../types';
 import { SYSTEM_PROMPT } from '../constants';
 import { getAIConfig } from './firebaseService';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-
-const responseSchema = {
-  type: Type.OBJECT,
-  properties: {
-    files: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          name: { type: Type.STRING },
-          language: { type: Type.STRING },
-          content: { type: Type.STRING },
-        },
-        required: ['name', 'language', 'content'],
-      },
-    },
-    responseMessage: {
-      type: Type.OBJECT,
-      properties: {
-        plan: { type: Type.STRING },
-        summary: { type: Type.STRING },
-        answer: { type: Type.STRING },
-        footer: { type: Type.STRING },
-        suggestions: {
-          type: Type.ARRAY,
-          items: { type: Type.STRING },
-        },
-      },
-      required: ['suggestions'],
-    },
-  },
-  required: ['files', 'responseMessage'],
-};
 
 let systemPromptCache: string | null = null;
 
@@ -62,53 +29,112 @@ async function getSystemPrompt(): Promise<string> {
   return systemPromptCache;
 }
 
+/**
+ * Parses the final, complete Markdown response from the AI into a structured GeminiResponse object.
+ * @param markdownText The full response from the AI.
+ * @returns A GeminiResponse object.
+ */
+function parseFinalResponse(markdownText: string): Omit<GeminiResponse, 'rawMarkdown'> {
+    const jsonRegex = /```json\s*([\s\S]*?)\s*```/;
+    const planRegex = /### (?:Plan|خطة)\s*([\s\S]*?)(?=```json)/;
+    
+    // More robust, order-agnostic regexes. They stop at the next heading, the footer, or the end of the string.
+    const boundary = `(?=\\n###|\\*For custom development|\\*للتطوير المخصص|$)`;
+    const summaryRegex = new RegExp(`### (?:Summary|ملخص)\\s*([\\s\\S]*?)${boundary}`);
+    const suggestionsRegex = new RegExp(`### (?:Suggestions|اقتراحات)\\s*([\\s\\S]*?)${boundary}`);
+    const answerRegex = new RegExp(`### (?:Answer|إجابة)\\s*([\\s\\S]*?)${boundary}`);
+    
+    const footerRegex = /\*(?:For custom development and AI solutions, contact the platform developer, Eng. Abdulrahman Al-Darb\.|للتطوير المخصص وحلول الذكاء الاصطناعي، تواصل مع مطور المنصة م\. عبدالرحمن الدرب\.)\*/;
 
-export async function generateCode(prompt: string, currentFiles: ProjectFile[], chatHistory: ChatMessage[]): Promise<GeminiResponse> {
+
+    const jsonMatch = markdownText.match(jsonRegex);
+    let files: ProjectFile[] = [];
+    if (jsonMatch && jsonMatch[1]) {
+        try {
+            files = JSON.parse(jsonMatch[1]).files;
+        } catch (e) {
+            console.error("Failed to parse JSON from final response:", e);
+        }
+    }
+    
+    // Helper to clean up matched markdown
+    const cleanMatch = (match: RegExpMatchArray | null) => match?.[1]?.trim() || '';
+
+    const plan = cleanMatch(markdownText.match(planRegex));
+    const summary = cleanMatch(markdownText.match(summaryRegex));
+    const suggestionsText = cleanMatch(markdownText.match(suggestionsRegex));
+    const suggestions = suggestionsText.split('\n').map(s => s.replace(/^- /, '').trim()).filter(Boolean);
+    const footer = markdownText.match(footerRegex)?.[0] || '';
+    const answer = cleanMatch(markdownText.match(answerRegex));
+
+    return {
+        files: files || [],
+        responseMessage: {
+            plan: plan,
+            summary: summary,
+            answer: answer,
+            suggestions: suggestions,
+            footer: footer,
+        },
+    };
+}
+
+
+export async function generateCodeStream(
+    prompt: string, 
+    currentFiles: ProjectFile[], 
+    chatHistory: ChatMessage[], 
+    language: 'ar' | 'en',
+    onChunk: (textChunk: string) => void,
+    signal: AbortSignal
+): Promise<GeminiResponse> {
   try {
     const systemInstruction = await getSystemPrompt();
     
-    // Take the last 6 messages (excluding the current user prompt which is not yet in the history)
-    // and format them for context.
     const historyForContext = chatHistory
       .slice(-6)
-      .filter(msg => msg.role !== 'system') // System messages are not part of the conversation flow
+      .filter(msg => msg.role !== 'system')
       .map(msg => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
       .join('\n\n');
 
     const fullPrompt = `
-      <conversation_history>
-      ${historyForContext}
-      </conversation_history>
-
+      <language_preference>${language}</language_preference>
+      <conversation_history>${historyForContext}</conversation_history>
       <user_request>${prompt}</user_request>
-
-      <project_files>
-      ${JSON.stringify(currentFiles, null, 2)}
-      </project_files>
+      <project_files>${JSON.stringify(currentFiles, null, 2)}</project_files>
     `;
 
-    const response = await ai.models.generateContent({
+    const responseStream = await ai.models.generateContentStream({
       model: 'gemini-2.5-pro',
       contents: fullPrompt,
       config: {
         systemInstruction: systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: responseSchema,
         temperature: 0.2,
       },
     });
 
-    const jsonText = response.text.trim();
-    const parsedResponse = JSON.parse(jsonText);
-    
-    // Basic validation to ensure the response is in a usable state
-    if (parsedResponse && Array.isArray(parsedResponse.files) && parsedResponse.responseMessage) {
-      return parsedResponse;
-    } else {
-      console.error("Invalid response format from Gemini API:", parsedResponse);
-      throw new Error("Failed to parse the file structure from the AI response.");
+    let aggregatedResponseText = '';
+    for await (const chunk of responseStream) {
+        signal.throwIfAborted(); // Check for cancellation on each chunk.
+        const chunkText = chunk.text;
+        if (chunkText) {
+            aggregatedResponseText += chunkText;
+            onChunk(chunkText);
+        }
     }
+    
+    // Perform a final, clean parse of the entire aggregated response
+    const parsedResponse = parseFinalResponse(aggregatedResponseText);
+    return {
+        ...parsedResponse,
+        rawMarkdown: aggregatedResponseText,
+    };
+
   } catch (error) {
+    // If it's an AbortError, re-throw it so the caller can handle it.
+    if (error instanceof DOMException && error.name === 'AbortError') {
+        throw error;
+    }
     console.error("Error calling Gemini API:", error);
     if (error instanceof Error) {
         throw new Error(`An error occurred while generating code: ${error.message}`);
@@ -147,7 +173,8 @@ export async function generateCritique(currentFiles: ProjectFile[]): Promise<str
     });
 
     return response.text;
-  } catch (error) {
+  } catch (error)
+ {
     console.error("Error calling Gemini API for critique:", error);
     if (error instanceof Error) {
         throw new Error(`An error occurred while generating critique: ${error.message}`);

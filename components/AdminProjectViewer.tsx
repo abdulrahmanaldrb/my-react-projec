@@ -5,7 +5,8 @@
 import * as React from 'react';
 import { Allotment } from 'allotment';
 import { Project, ChatMessage, ProjectFile } from '../types';
-import { generateCode } from '../services/geminiService';
+// Fix: Renamed generateCode to generateCodeStream to match the exported function name.
+import { generateCodeStream } from '../services/geminiService';
 import { adminUpdateUserProject, approveSubmission, rejectSubmission } from '../services/firebaseService';
 
 import ChatPanel from './ChatPanel';
@@ -40,6 +41,11 @@ const AdminProjectViewer: React.FC<AdminProjectViewerProps> = ({ project, userId
 
     const [isEditingName, setIsEditingName] = React.useState(false);
     const [editingName, setEditingName] = React.useState(project.name);
+
+    const handleFileSelectFromChat = (fileName: string) => {
+        setSelectedFile(fileName);
+        setActiveTab('code');
+    };
 
     React.useEffect(() => {
         const indexFile = project.files.find(f => f.name === 'index.html');
@@ -82,7 +88,9 @@ const AdminProjectViewer: React.FC<AdminProjectViewerProps> = ({ project, userId
         setCurrentProject(p => ({ ...p, chatHistory: optimisticChatHistory }));
 
         try {
-            const response = await generateCode(prompt, currentProject.files, currentProject.chatHistory);
+            // Fix: Use generateCodeStream and provide a no-op callback for streaming updates.
+            // Fix: Add missing AbortSignal argument to generateCodeStream call.
+            const response = await generateCodeStream(prompt, currentProject.files, currentProject.chatHistory, 'en', () => {}, new AbortController().signal);
             
             let modelContent = '';
             const { answer, plan, summary, footer } = response.responseMessage;
@@ -174,12 +182,16 @@ const AdminProjectViewer: React.FC<AdminProjectViewerProps> = ({ project, userId
                     isLoading={isLoading}
                     onSubmit={handleSubmitPrompt}
                     onSuggestionClick={handleSubmitPrompt}
+                    // Fix: Added missing onFileSelect prop.
+                    onFileSelect={handleFileSelectFromChat}
                     activeProjectName={currentProject.name}
                     onOpenDrawerRequest={() => {}}
                     onLogout={() => {}} // No-op for admin
                     userEmail={userEmail}
                     isChatDisabled={false}
                     onCritiqueRequest={() => {}}
+                    // Fix: Add missing onStopGeneration prop to ChatPanel.
+                    onStopGeneration={() => {}}
                 />
             </div>
             <div className={`flex-1 flex flex-col min-w-0 ${isPreviewFullScreen ? 'fixed inset-0 z-40' : ''}`}>

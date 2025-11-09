@@ -5,6 +5,7 @@ import * as React from 'react';
 import { ModelIcon } from './icons';
 import { AuthResponse } from '../services/authService';
 import PasswordResetChatModal from './PasswordResetChatModal';
+import { useLanguage } from '../App';
 
 type AuthMode = 'signin' | 'signup';
 
@@ -14,6 +15,7 @@ interface LoginProps {
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin, onSignUp }) => {
+  const { t } = useLanguage();
   const [mode, setMode] = React.useState<AuthMode>('signin');
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
@@ -35,7 +37,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim()) {
-      setError("Email and password cannot be empty.");
+      setError(t('auth.emptyFields'));
       return;
     }
     setError(null);
@@ -49,16 +51,16 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp }) => {
     }
     
     if (!response.success) {
-        setError(response.message || "An unknown error occurred.");
+        setError(response.message || t('common.error'));
     }
 
     setIsLoading(false);
   };
   
-  const title = mode === 'signin' ? 'Welcome Back' : 'Create Your Account';
-  const buttonText = mode === 'signin' ? 'Sign In' : 'Sign Up';
-  const switchText = mode === 'signin' ? "Don't have an account?" : "Already have an account?";
-  const switchLinkText = mode === 'signin' ? "Sign Up" : "Sign In";
+  const title = mode === 'signin' ? t('auth.welcomeBack') : t('auth.createAccount');
+  const buttonText = mode === 'signin' ? t('auth.signIn') : t('auth.signUp');
+  const switchText = mode === 'signin' ? t('auth.dontHaveAccount') : t('auth.alreadyHaveAccount');
+  const switchLinkText = mode === 'signin' ? t('auth.signUp') : t('auth.signIn');
 
   return (
     <>
@@ -74,7 +76,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp }) => {
           {error && <p className="bg-red-500/10 dark:bg-red-500/20 text-red-600 dark:text-red-400 text-sm p-3 rounded-md mb-4 text-center">{error}</p>}
           <div className="mb-4">
             <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Email
+              {t('auth.emailLabel')}
             </label>
             <input
               type="email"
@@ -90,10 +92,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp }) => {
            <div className="mb-4">
              <div className="flex justify-between items-center mb-2">
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Password
+                {t('auth.passwordLabel')}
                 </label>
                 {mode === 'signin' && (
-                    <button type="button" onClick={() => setIsResetModalOpen(true)} className="text-xs text-blue-500 dark:text-blue-400 hover:underline">Forgot Password?</button>
+                    <button type="button" onClick={() => setIsResetModalOpen(true)} className="text-xs text-blue-500 dark:text-blue-400 hover:underline">{t('auth.forgotPassword')}</button>
                 )}
              </div>
             <input
@@ -112,7 +114,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onSignUp }) => {
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-md transition-colors disabled:opacity-50 flex items-center justify-center mt-6"
             disabled={isLoading}
           >
-            {isLoading ? 'Processing...' : buttonText}
+            {isLoading ? t('auth.processing') : buttonText}
           </button>
         </form>
          <p className="text-sm text-gray-500 dark:text-gray-400 mt-6 text-center">
