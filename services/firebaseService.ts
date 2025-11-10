@@ -13,16 +13,40 @@ const getUserEmail = (): string | null => {
 }
 
 // New function to create a user profile document in Firestore
-export const createUserProfile = async (userId: string, email: string): Promise<void> => {
+export const createUserProfile = async (userId: string, email: string, extra?: Partial<UserProfileData>): Promise<void> => {
     const userRef = doc(db, 'users', userId);
-    // Use setDoc with merge:true to avoid overwriting existing data if any
-    await setDoc(userRef, { 
-        email: email,
-        displayName: email.split('@')[0], // Default display name
-        createdAt: serverTimestamp(), // Use server timestamp
-        status: 'active', // Default status
-        isVerified: false, // Default verification
-    }, { merge: true });
+    const payload: Partial<UserProfileData> = {
+        email,
+        // Normalized email for lookups
+        // This helps invitations and status checks find Google accounts reliably
+        // regardless of case differences.
+        emailLower: email.toLowerCase(),
+        displayName: extra?.displayName || email.split('@')[0],
+        photoURL: extra?.photoURL,
+        firstName: extra?.firstName,
+        lastName: extra?.lastName,
+        phone: extra?.phone,
+        address: extra?.address,
+        createdAt: serverTimestamp() as any,
+        status: 'active',
+        isVerified: false,
+    };
+    await setDoc(userRef, payload, { merge: true });
+};
+
+export interface AdminLogEntry {
+    id?: string;
+    action: string;
+    payload: any;
+    adminId: string;
+    adminEmail: string;
+    createdAt: any;
+}
+
+export const adminGetLogs = async (max: number = 200): Promise<AdminLogEntry[]> => {
+    const q = query(collection(db, 'admin_logs'), orderBy('createdAt', 'desc'), limit(max));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(d => ({ id: d.id, ...(d.data() as AdminLogEntry) }));
 };
 
 // --- Real-time Collaboration Project Functions ---
@@ -82,6 +106,12 @@ export const updateProject = async (projectId: string, updates: Partial<Project>
 
     const projectRef = doc(db, 'projects', projectId);
     await updateDoc(projectRef, updates);
+    // If cover image was updated in shareData, keep marketplace copy in sync
+    const newCover = (updates as any)?.shareData?.coverImage as string | undefined;
+    if (newCover) {
+        const marketplaceRef = doc(db, 'marketplace_projects', projectId);
+        try { await updateDoc(marketplaceRef, { coverImage: newCover }); } catch {}
+    }
 };
 
 export const sendProjectChatMessage = async (projectId: string, content: string): Promise<void> => {
@@ -107,12 +137,17 @@ export const sendProjectChatMessage = async (projectId: string, content: string)
 // Find a user by their email to get their UID.
 export const findUserByEmail = async (email: string): Promise<{ uid: string; email: string } | null> => {
     const usersRef = collection(db, 'users');
-    const q = query(usersRef, where("email", "==", email), limit(1));
-    const querySnapshot = await getDocs(q);
-    if (querySnapshot.empty) {
-        return null;
+    const emailLc = (email || '').toLowerCase();
+    // Try normalized field first
+    let q1 = query(usersRef, where("emailLower", "==", emailLc), limit(1));
+    let snap = await getDocs(q1);
+    if (snap.empty) {
+        // Fallback to legacy field
+        const q2 = query(usersRef, where("email", "==", email), limit(1));
+        snap = await getDocs(q2);
     }
-    const userDoc = querySnapshot.docs[0];
+    if (snap.empty) return null;
+    const userDoc = snap.docs[0];
     return { uid: userDoc.id, email: userDoc.data().email };
 };
 
@@ -483,7 +518,14 @@ export const getProjectsByCreatorId = async (creatorId: string): Promise<Marketp
 };
 
 export const updateUserProfile = async (userId: string, profileData: Partial<UserProfileData>): Promise<void> => {
-    await updateDoc(doc(db, 'users', userId), profileData);
+    // Sanitize to remove undefined/null fields to avoid Firestore errors
+    const clean: any = {};
+    Object.entries(profileData || {}).forEach(([k, v]) => {
+        if (v !== undefined && v !== null) clean[k] = v;
+    });
+    if (clean.email) clean.emailLower = String(clean.email).toLowerCase();
+    // Use setDoc with merge so it creates the doc if missing and updates otherwise
+    await setDoc(doc(db, 'users', userId), clean, { merge: true });
 };
 
 // --- Feedback Function ---
@@ -615,12 +657,15 @@ export const adminUpdateFeedbackStatus = async (feedbackId: string, status: Feed
 
 export const checkUserStatusByEmail = async (email: string): Promise<{ status: string } | null> => {
     const usersRef = collection(db, 'users');
-    const q = query(usersRef, where("email", "==", email), limit(1));
-    const querySnapshot = await getDocs(q);
-    if (querySnapshot.empty) {
-        return null; // User not found
+    const emailLc = (email || '').toLowerCase();
+    let q1 = query(usersRef, where("emailLower", "==", emailLc), limit(1));
+    let snap = await getDocs(q1);
+    if (snap.empty) {
+        const q2 = query(usersRef, where("email", "==", email), limit(1));
+        snap = await getDocs(q2);
     }
-    const userDoc = querySnapshot.docs[0];
+    if (snap.empty) return null;
+    const userDoc = snap.docs[0];
     const userData = userDoc.data() as UserProfileData;
     return { status: userData.status };
 };
@@ -708,6 +753,7 @@ export const approveSubmission = async (project: Project): Promise<void> => {
         creatorId: project.ownerId,
         creatorEmail: userProfile?.email || 'Unknown',
         approvedAt: serverTimestamp(),
+        coverImage: project.shareData?.coverImage,
         reviewCount: 0, 
         averageRating: 0, 
         downloads: 0,
@@ -820,9 +866,12 @@ export const deleteAllUserData = async (userId: string): Promise<void> => {
 // --- New Admin Analytics and Management Functions ---
 
 export const getAdminAnalyticsData = async (): Promise<AdminAnalyticsData> => {
-    const [usersSnapshot, marketplaceSnapshot] = await Promise.all([
+    const [usersSnapshot, marketplaceSnapshot, reportsSnapshot, resetsSnapshot, sessionsSnapshot] = await Promise.all([
         getDocs(collection(db, 'users')),
-        getDocs(collection(db, 'marketplace_projects'))
+        getDocs(collection(db, 'marketplace_projects')),
+        getDocs(collection(db, 'reported_reviews')),
+        getDocs(collection(db, 'password_reset_requests')),
+        getDocs(collection(db, 'sessions')),
     ]);
 
     const users = usersSnapshot.docs.map(doc => doc.data() as UserProfileData);
@@ -837,6 +886,17 @@ export const getAdminAnalyticsData = async (): Promise<AdminAnalyticsData> => {
             userGrowthMap.set(month, (userGrowthMap.get(month) || 0) + 1);
         }
     });
+    // Ensure last 6 month buckets appear even if zero
+    const ensureLastMonths = (map: Map<string, number>, monthsBack: number = 6) => {
+        const now = new Date();
+        for (let i = monthsBack - 1; i >= 0; i--) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            if (!map.has(key)) map.set(key, 0);
+        }
+        return map;
+    };
+    ensureLastMonths(userGrowthMap);
     const userGrowth = Array.from(userGrowthMap.entries()).sort().map(([label, value]) => ({ label, value }));
 
     // Process Project Growth
@@ -848,6 +908,7 @@ export const getAdminAnalyticsData = async (): Promise<AdminAnalyticsData> => {
             projectGrowthMap.set(month, (projectGrowthMap.get(month) || 0) + 1);
         }
     });
+    ensureLastMonths(projectGrowthMap);
     const projectGrowth = Array.from(projectGrowthMap.entries()).sort().map(([label, value]) => ({ label, value }));
 
     // Process Category Distribution
@@ -858,12 +919,80 @@ export const getAdminAnalyticsData = async (): Promise<AdminAnalyticsData> => {
     });
     const categoryDistribution = Array.from(categoryMap.entries()).map(([label, value]) => ({ label, value }));
 
+    // Process reported reviews monthly
+    const reportsMap = new Map<string, number>();
+    reportsSnapshot.docs.forEach(docSnap => {
+        const d: any = docSnap.data();
+        const ts = d.reportedAt?.toDate && d.reportedAt.toDate();
+        if (ts) {
+            const key = `${ts.getFullYear()}-${String(ts.getMonth() + 1).padStart(2, '0')}`;
+            reportsMap.set(key, (reportsMap.get(key) || 0) + 1);
+        }
+    });
+    ensureLastMonths(reportsMap);
+    const reportedReviewsMonthly = Array.from(reportsMap.entries()).sort().map(([label, value]) => ({ label, value }));
+
+    // Process password reset requests monthly
+    const resetsMap = new Map<string, number>();
+    resetsSnapshot.docs.forEach(docSnap => {
+        const d: any = docSnap.data();
+        const ts = d.createdAt?.toDate && d.createdAt.toDate();
+        if (ts) {
+            const key = `${ts.getFullYear()}-${String(ts.getMonth() + 1).padStart(2, '0')}`;
+            resetsMap.set(key, (resetsMap.get(key) || 0) + 1);
+        }
+    });
+    ensureLastMonths(resetsMap);
+    const resetRequestsMonthly = Array.from(resetsMap.entries()).sort().map(([label, value]) => ({ label, value }));
+
     // Process Top Projects
     const topRatedProjects = [...projects].sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0)).slice(0, 5).map(p => ({ id: p.id, name: p.name, creatorEmail: p.creatorEmail, value: p.averageRating || 0 }));
     const topDownloadedProjects = [...projects].sort((a, b) => (b.downloads || 0) - (a.downloads || 0)).slice(0, 5).map(p => ({ id: p.id, name: p.name, creatorEmail: p.creatorEmail, value: p.downloads || 0 }));
     const topClonedProjects = [...projects].sort((a, b) => (b.cloneCount || 0) - (a.cloneCount || 0)).slice(0, 5).map(p => ({ id: p.id, name: p.name, creatorEmail: p.creatorEmail, value: p.cloneCount || 0 }));
 
-    return { userGrowth, projectGrowth, categoryDistribution, topRatedProjects, topDownloadedProjects, topClonedProjects };
+    // Visitor daily (unique sessions per day)
+    const visitorMap = new Map<string, Set<string>>();
+    sessionsSnapshot.docs.forEach(d => {
+        const data: any = d.data();
+        const ts = data.startAt?.toDate && data.startAt.toDate();
+        const anon = data.anonId || d.id;
+        if (ts) {
+            const key = `${ts.getFullYear()}-${String(ts.getMonth() + 1).padStart(2, '0')}-${String(ts.getDate()).padStart(2, '0')}`;
+            const set = visitorMap.get(key) || new Set<string>();
+            set.add(anon);
+            visitorMap.set(key, set);
+        }
+    });
+    // Ensure last 14 days
+    const ensureLastDays = (days: number = 14) => {
+        const map = new Map<string, number>();
+        for (let i = days - 1; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            map.set(key, visitorMap.get(key)?.size || 0);
+        }
+        return map;
+    };
+    const visitorDaily = Array.from(ensureLastDays().entries()).map(([label, value]) => ({ label, value }));
+
+    // KPIs summary
+    const totalUsers = users.length;
+    const totalMarketplace = projects.length;
+    const totalDownloads = projects.reduce((sum, p) => sum + (p.downloads || 0), 0);
+    const avgRating = projects.length ? (projects.reduce((sum, p) => sum + (p.averageRating || 0), 0) / projects.length) : 0;
+    const openResetRequests = resetsSnapshot.docs.filter(d => (d.data() as any).status === 'open').length;
+    const reportedCount = reportsSnapshot.size;
+    const kpis = [
+        { label: 'Total Users', value: totalUsers },
+        { label: 'Marketplace Projects', value: totalMarketplace },
+        { label: 'Total Downloads', value: totalDownloads },
+        { label: 'Avg Rating', value: parseFloat(avgRating.toFixed(2)) },
+        { label: 'Open Reset Requests', value: openResetRequests },
+        { label: 'Reported Reviews', value: reportedCount },
+    ];
+
+    return { kpis, userGrowth, projectGrowth, reportedReviewsMonthly, resetRequestsMonthly, visitorDaily, categoryDistribution, topRatedProjects, topDownloadedProjects, topClonedProjects };
 };
 
 export const adminGetMarketplaceProjects = async (): Promise<MarketplaceProject[]> => {
@@ -879,4 +1008,20 @@ export const adminDeleteMarketplaceProject = async (projectId: string): Promise<
     await deleteDoc(doc(db, 'marketplace_projects', projectId));
     // Also mark the original project as no longer approved
     await updateDoc(doc(db, 'projects', projectId), { 'shareData.status': 'none' });
+};
+
+// --- Admin Audit Logging ---
+export const adminLog = async (action: string, payload: any): Promise<void> => {
+    try {
+        await addDoc(collection(db, 'admin_logs'), {
+            action,
+            payload,
+            adminId: auth.currentUser?.uid || 'unknown',
+            adminEmail: auth.currentUser?.email || '',
+            createdAt: serverTimestamp(),
+        });
+    } catch (e) {
+        // Non-fatal: do not throw to avoid breaking UX
+        console.warn('Failed to write admin log', e);
+    }
 };

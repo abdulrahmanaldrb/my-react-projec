@@ -1,6 +1,7 @@
 // components/MyProfile.tsx
 import * as React from 'react';
 import { getUserProfile, updateUserProfile, getProjectsByCreatorId } from '../services/firebaseService';
+import { uploadFileToLocalServer, getPublicUrl, isUploadServerAvailable } from '../services/uploadService';
 import { UserProfileData } from '../types';
 import { ArrowLeftIcon, LoadingSpinner, UserIcon, PencilIcon, LinkIcon, GitHubIcon } from './icons';
 import { auth } from '../firebaseConfig';
@@ -40,7 +41,10 @@ const MyProfile: React.FC<MyProfileProps> = ({ onBack, showToast }) => {
     const [isEditing, setIsEditing] = React.useState(false);
     const [isSaving, setIsSaving] = React.useState(false);
     const [formData, setFormData] = React.useState<Partial<UserProfileData>>({});
+    const [selectedPhoto, setSelectedPhoto] = React.useState<File | null>(null);
+    const [warning, setWarning] = React.useState<string | null>(null);
     const [projectCount, setProjectCount] = React.useState(0);
+    const previewPhoto = React.useMemo(() => selectedPhoto ? URL.createObjectURL(selectedPhoto) : (formData.photoURL || profile?.photoURL || ''), [selectedPhoto, formData.photoURL, profile?.photoURL]);
     
     const userId = auth.currentUser?.uid;
 
@@ -83,8 +87,21 @@ const MyProfile: React.FC<MyProfileProps> = ({ onBack, showToast }) => {
         if (!userId) return;
         setIsSaving(true);
         try {
-            await updateUserProfile(userId, formData);
-            setProfile(prev => ({ ...(prev as UserProfileData), ...formData }));
+            // Prepare data to save
+            let newPhotoURL = formData.photoURL;
+            if (selectedPhoto) {
+                const online = await isUploadServerAvailable();
+                if (!online) {
+                    setWarning('تعذّر رفع الصورة: خادم الرفع غير متاح حالياً. تم حفظ باقي الحقول ويمكنك إعادة المحاولة لاحقاً.');
+                } else {
+                    const res = await uploadFileToLocalServer(selectedPhoto);
+                    if (!res.ok || !res.path) throw new Error(res.error || 'Failed to upload photo');
+                    newPhotoURL = getPublicUrl(res.path);
+                }
+            }
+            const dataToSave = { ...formData, photoURL: newPhotoURL } as Partial<UserProfileData>;
+            await updateUserProfile(userId, dataToSave);
+            setProfile(prev => ({ ...(prev as UserProfileData), ...dataToSave }));
             setIsEditing(false);
             showToast("Profile updated successfully!");
         } catch (error) {
@@ -133,8 +150,17 @@ const MyProfile: React.FC<MyProfileProps> = ({ onBack, showToast }) => {
             </header>
              <main className="max-w-4xl mx-auto p-4 md:p-8">
                 <div className="bg-white dark:bg-gray-800 rounded-lg p-6 mb-8 flex flex-col sm:flex-row items-center gap-6 border border-gray-200 dark:border-gray-700 shadow-md">
-                    <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-full">
-                        <UserIcon className="w-20 h-20 text-blue-500 dark:text-blue-400" />
+                    <div className="flex flex-col items-center gap-2">
+                        {previewPhoto ? (
+                            <img src={previewPhoto} alt="Profile" className="w-24 h-24 rounded-full object-cover border border-gray-300 dark:border-gray-600" />
+                        ) : (
+                            <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-full">
+                                <UserIcon className="w-20 h-20 text-blue-500 dark:text-blue-400" />
+                            </div>
+                        )}
+                        {isEditing && (
+                            <input type="file" accept="image/*" onChange={e=>setSelectedPhoto(e.target.files?.[0] || null)} className="text-xs" />
+                        )}
                     </div>
                     <div className="flex-1 text-center sm:text-left">
                         {isEditing ? (
@@ -163,6 +189,14 @@ const MyProfile: React.FC<MyProfileProps> = ({ onBack, showToast }) => {
                 <div className="bg-white dark:bg-gray-800 rounded-lg p-6 border border-gray-200 dark:border-gray-700 shadow-md">
                     {isEditing ? (
                         <div className="space-y-4">
+                            {warning && <div className="text-yellow-800 bg-yellow-500/10 p-2 rounded text-sm">{warning}</div>}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <EditField label="First Name" name="firstName" value={formData.firstName} onChange={handleInputChange} placeholder="Your first name" />
+                                <EditField label="Last Name" name="lastName" value={formData.lastName} onChange={handleInputChange} placeholder="Your last name" />
+                                <EditField label="Phone" name="phone" value={formData.phone} onChange={handleInputChange} placeholder="e.g. +966..." />
+                                <EditField label="Address" name="address" value={formData.address} onChange={handleInputChange} placeholder="Your address" />
+                                <EditField label="Photo URL (optional)" name="photoURL" value={formData.photoURL} onChange={handleInputChange} placeholder="http://localhost:4001/uploads/images/..." />
+                            </div>
                             <div>
                                 <label htmlFor="bio" className="block text-sm font-medium text-gray-500 dark:text-gray-400">Bio</label>
                                 <textarea
@@ -189,6 +223,9 @@ const MyProfile: React.FC<MyProfileProps> = ({ onBack, showToast }) => {
                         </div>
                     ) : (
                         <div className="space-y-6">
+                            <InfoField label="Name" value={`${profile.firstName || ''} ${profile.lastName || ''}`.trim() || 'Not set'} />
+                            <InfoField label="Phone" value={profile.phone} />
+                            <InfoField label="Address" value={profile.address} />
                             <InfoField label="Bio" value={<p className="whitespace-pre-wrap">{profile.bio}</p>} />
                             <InfoField label="Skills" value={
                                 <div className="flex flex-wrap gap-2">

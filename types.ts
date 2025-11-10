@@ -38,6 +38,7 @@ export interface ShareData {
   permissions: SharePermissions;
   category: string;
   description: string;
+  coverImage?: string; // optional thumbnail/cover image URL
   submittedAt?: any; // For Firestore serverTimestamp
   reviewedAt?: any; // For Firestore serverTimestamp
 }
@@ -91,8 +92,14 @@ export interface Review {
 // Add a new type for the user profile page.
 export interface UserProfileData {
   email: string;
+  emailLower?: string; // normalized lowercase email for lookups
   createdAt: any; // Firestore serverTimestamp
   displayName?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  address?: string;
+  photoURL?: string;
   bio?: string;
   skills?: string[];
   website?: string;
@@ -107,6 +114,7 @@ export interface MarketplaceProject extends Project {
   creatorId: string;
   creatorEmail: string;
   approvedAt: any;
+  coverImage?: string; // propagated from shareData.coverImage
   // Add rating fields for marketplace display.
   averageRating?: number;
   reviewCount?: number;
@@ -232,9 +240,24 @@ export interface TopProjectInfo {
   creatorEmail: string;
 }
 
+export interface AdminKPIEntry {
+  label: string;
+  value: number;
+  delta?: number; // optional change vs previous period
+}
+
 export interface AdminAnalyticsData {
+  // KPIs
+  kpis: AdminKPIEntry[];
+
+  // Time series
   userGrowth: ChartDataPoint[];
   projectGrowth: ChartDataPoint[];
+  reportedReviewsMonthly: ChartDataPoint[];
+  resetRequestsMonthly: ChartDataPoint[];
+  visitorDaily: ChartDataPoint[];
+
+  // Distributions/top lists
   categoryDistribution: ChartDataPoint[];
   topRatedProjects: TopProjectInfo[];
   topDownloadedProjects: TopProjectInfo[];

@@ -55,6 +55,7 @@ interface CodeBlockProps {
 
 const CodeBlock: React.FC<CodeBlockProps> = ({ code, language }) => {
     const [copied, setCopied] = React.useState(false);
+    const codeRef = React.useRef<HTMLElement | null>(null);
     
     const handleCopy = () => {
         navigator.clipboard.writeText(code).then(() => {
@@ -62,6 +63,37 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ code, language }) => {
             setTimeout(() => setCopied(false), 2000);
         });
     };
+
+    const hljsLang = React.useMemo(() => {
+        const lang = (language || '').toLowerCase();
+        if (lang === 'html') return 'xml';
+        if (lang === 'js') return 'javascript';
+        return lang || '';
+    }, [language]);
+
+    const [hlReadyTick, setHlReadyTick] = React.useState(0);
+
+    // When highlight.js finishes loading after initial render, trigger a recompute once
+    React.useEffect(() => {
+        if ((window as any)?.hljs) return; // already available
+        const timer = setTimeout(() => {
+            if ((window as any)?.hljs) setHlReadyTick(t => t + 1);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, []);
+
+    const highlighted = React.useMemo(() => {
+        const hljs = (window as any)?.hljs;
+        if (!hljs) return null;
+        try {
+            if (hljsLang) {
+                return hljs.highlight(code, { language: hljsLang }).value;
+            }
+            return hljs.highlightAuto(code).value;
+        } catch {
+            return null;
+        }
+    }, [code, hljsLang, hlReadyTick]);
 
     return (
         <div className="bg-gray-900/70 rounded-md my-2 relative group text-left">
@@ -84,10 +116,12 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ code, language }) => {
                     )}
                 </button>
             </div>
-            <pre className="p-4 overflow-x-auto">
-                <code className={`language-${language} text-sm`}>
-                    {code}
-                </code>
+            <pre dir="ltr" className="p-4 overflow-x-auto text-left">
+                {highlighted ? (
+                    <code ref={codeRef} className={`hljs text-sm`} dangerouslySetInnerHTML={{ __html: highlighted }} />
+                ) : (
+                    <code ref={codeRef} className={`${hljsLang ? `language-${hljsLang}` : ''} hljs text-sm`}>{code}</code>
+                )}
             </pre>
         </div>
     );

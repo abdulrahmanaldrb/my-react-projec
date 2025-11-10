@@ -1,6 +1,6 @@
 // components/MarketplaceManagement.tsx
 import * as React from 'react';
-import { adminGetMarketplaceProjects, adminUpdateMarketplaceProject, adminDeleteMarketplaceProject } from '../services/firebaseService';
+import { adminGetMarketplaceProjects, adminUpdateMarketplaceProject, adminDeleteMarketplaceProject, getUserProfile } from '../services/firebaseService';
 import { MarketplaceProject } from '../types';
 import { LoadingSpinner, TrashIcon, CheckBadgeIcon, StarIcon } from './icons';
 
@@ -8,12 +8,21 @@ const MarketplaceManagement: React.FC = () => {
     const [projects, setProjects] = React.useState<MarketplaceProject[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
+    const [creators, setCreators] = React.useState<Record<string, { displayName?: string; photoURL?: string; isVerified?: boolean }>>({});
 
     const fetchData = React.useCallback(async () => {
         setIsLoading(true);
         try {
             const fetchedProjects = await adminGetMarketplaceProjects();
             setProjects(fetchedProjects);
+            const ids = Array.from(new Set(fetchedProjects.map(p => p.creatorId).filter(Boolean)));
+            const entries = await Promise.all(ids.map(async id => {
+                try {
+                    const prof = await getUserProfile(id);
+                    return [id, { displayName: prof?.displayName || [prof?.firstName, prof?.lastName].filter(Boolean).join(' ') || prof?.email?.split('@')[0] || 'N/A', photoURL: prof?.photoURL, isVerified: !!prof?.isVerified }] as const;
+                } catch { return [id, {}] as const; }
+            }));
+            setCreators(Object.fromEntries(entries));
         } catch (err) {
             setError("Failed to load marketplace projects.");
         } finally {
@@ -71,9 +80,14 @@ const MarketplaceManagement: React.FC = () => {
                             {projects.map(p => (
                                 <tr key={p.id} className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                                     <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">{p.name}</td>
-                                    <td className="px-6 py-4 flex items-center gap-1">
-                                        {p.creatorEmail}
-                                        {p.creatorIsVerified && <CheckBadgeIcon className="w-4 h-4 text-blue-500" title="Verified Creator" />}
+                                    <td className="px-6 py-4">
+                                        <div className="flex items-center gap-2">
+                                            {creators[p.creatorId]?.photoURL && (
+                                                <img src={creators[p.creatorId]!.photoURL!} alt={creators[p.creatorId]?.displayName || 'Creator'} className="w-6 h-6 rounded-full object-cover border border-gray-300 dark:border-gray-600" />
+                                            )}
+                                            <span className="text-gray-800 dark:text-gray-200 text-sm">{creators[p.creatorId]?.displayName || p.creatorEmail || 'N/A'}</span>
+                                            {(p.creatorIsVerified || creators[p.creatorId]?.isVerified) && <CheckBadgeIcon className="w-4 h-4 text-blue-500" title="Verified Creator" />}
+                                        </div>
                                     </td>
                                     <td className="px-6 py-4 text-center">
                                         <button onClick={() => handleToggle(p.id, 'isFeatured', !!p.isFeatured)}>

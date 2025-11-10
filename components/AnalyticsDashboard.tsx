@@ -50,6 +50,7 @@ const AnalyticsDashboard: React.FC = () => {
     const [data, setData] = React.useState<AdminAnalyticsData | null>(null);
     const [isLoading, setIsLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
+    const [rangeDays, setRangeDays] = React.useState<number>(180);
 
     React.useEffect(() => {
         const fetchData = async () => {
@@ -78,12 +79,56 @@ const AnalyticsDashboard: React.FC = () => {
     if (!data) {
         return <div className="text-center text-gray-500">No data available.</div>;
     }
+
+    const filterByRange = (series: ChartDataPoint[]) => {
+        // Supports labels YYYY-MM or YYYY-MM-DD
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - rangeDays);
+        return series.filter(d => {
+            const parts = d.label.split('-').map(Number);
+            const y = parts[0];
+            const m = (parts[1] || 1) - 1;
+            const day = parts.length > 2 ? parts[2] : 1;
+            const dt = new Date(y, m, day);
+            return dt >= cutoff;
+        });
+    };
+
+    const userGrowth = filterByRange(data.userGrowth);
+    const projectGrowth = filterByRange(data.projectGrowth);
+    const reportedReviewsMonthly = filterByRange(data.reportedReviewsMonthly);
+    const resetRequestsMonthly = filterByRange(data.resetRequestsMonthly);
+    const visitorDaily = filterByRange(data.visitorDaily);
     
     return (
         <div className="space-y-6">
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                {data.kpis.map(k => (
+                    <div key={k.label} className="bg-white dark:bg-gray-800 p-3 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{k.label}</p>
+                        <p className="text-2xl font-bold text-gray-900 dark:text-white">{k.value}</p>
+                    </div>
+                ))}
+            </div>
+
+            <div className="flex items-center justify-end">
+                <label className="text-sm mr-2 text-gray-600 dark:text-gray-300">Range:</label>
+                <select value={rangeDays} onChange={e => setRangeDays(Number(e.target.value))} className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md p-1 text-sm">
+                    <option value={7}>7 days</option>
+                    <option value={30}>30 days</option>
+                    <option value={90}>90 days</option>
+                    <option value={180}>180 days</option>
+                </select>
+            </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <BarChart title="New Users per Month" data={data.userGrowth} />
-                <BarChart title="New Marketplace Projects per Month" data={data.projectGrowth} />
+                <BarChart title="New Users per Month" data={userGrowth} />
+                <BarChart title="New Marketplace Projects per Month" data={projectGrowth} />
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <BarChart title="Reported Reviews per Month" data={reportedReviewsMonthly} />
+                <BarChart title="Password Reset Requests per Month" data={resetRequestsMonthly} />
+                <BarChart title="Unique Visitors per Day" data={visitorDaily} />
             </div>
              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">

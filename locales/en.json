@@ -298,12 +298,23 @@
       "allCategories": "All Categories",
       "noMatches": "No projects match your search.",
       "overview": "Overview & Reviews",
+      "ratingTitle": "Average rating and reviews",
+      "downloadsTitle": "Total downloads",
       "preview": "Preview",
       "code": "Code",
       "chat": "Chat",
       "download": "Download",
       "clone": "Clone to My Projects",
-      "cloningNotAllowed": "Cloning not allowed"
+      "cloningNotAllowed": "Cloning not allowed",
+    "myStore": "My Store",
+    "myPublished": "My Published Projects",
+    "loginToSee": "Log in to see your projects.",
+    "noPublished": "You don't have any published projects yet."
+  },
+  "upload": {
+    "bannerOffline": "Image upload server is offline. Run: npm run upload-server",
+    "serverOffline": "Local upload server is offline. Start it with: npm run upload-server",
+    "photoUploadFailed": "Could not upload photo: upload server is offline. Other fields were saved; try again later."
   },
   "reviews": {
       "noDescription": "No description provided.",
@@ -342,4 +353,4 @@
       "startNew": "To start a new request, {link}.",
       "clickHere": "click here"
   }
-}
+} 

@@ -18,13 +18,16 @@ import NotificationsPanel from './components/NotificationsPanel';
 import ShareProjectModal from './components/ShareProjectModal';
 import ProjectChatPanel from './components/ProjectChatPanel';
 import { enTranslations, arTranslations } from './locales/index';
+import { initTelemetry } from './services/analyticsService';
+import ProfileCompletionModal from './components/ProfileCompletionModal';
+import { isUploadServerAvailable } from './services/uploadService';
 
 
 import { ArrowLeftIcon, ArrowRightIcon, RefreshIcon, ArrowDownTrayIcon, DevicePhoneMobileIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon, InformationCircleIcon, StoreIcon, LoadingSpinner, BellIcon, PublishIcon, UsersIcon, XMarkIcon, ChatBubbleLeftEllipsisIcon } from './components/icons';
 
 import { generateCodeStream, generateCritique } from './services/geminiService';
 import { AuthResponse, signIn, signUp, logOut, onAuthChange } from './services/authService';
-import { onProjectsSnapshot, saveProject, deleteProject, updateProject, submitProjectForReview, cloneMarketplaceProject, inviteUserToProject, onInvitationsSnapshot, respondToInvitation, removeCollaborator, onNotificationsSnapshot, markNotificationAsRead, markAllNotificationsAsRead, getActiveAnnouncements } from './services/firebaseService';
+import { onProjectsSnapshot, saveProject, deleteProject, updateProject, submitProjectForReview, cloneMarketplaceProject, inviteUserToProject, onInvitationsSnapshot, respondToInvitation, removeCollaborator, onNotificationsSnapshot, markNotificationAsRead, markAllNotificationsAsRead, getActiveAnnouncements, getUserProfile, updateUserProfile } from './services/firebaseService';
 
 import { Project, ChatMessage, UserCredentials, ProjectFile, MarketplaceProject, ShareData, ProjectInvitation, Notification, Announcement } from './types';
 import { createNewProject } from './constants';
@@ -302,6 +305,9 @@ const AppContent: React.FC = () => {
     const [toastMessage, setToastMessage] = React.useState<string | null>(null);
     const [theme, setTheme] = React.useState<AppTheme>('dark');
     const [activeAnnouncement, setActiveAnnouncement] = React.useState<Announcement | null>(null);
+    const [showProfileModal, setShowProfileModal] = React.useState(false);
+    const [profileDefaults, setProfileDefaults] = React.useState<{ displayName?: string; firstName?: string; lastName?: string; phone?: string; address?: string; photoURL?: string }>({});
+    const [uploadServerOnline, setUploadServerOnline] = React.useState<boolean>(true);
     
     // --- Project State ---
     const [projects, setProjects] = React.useState<Project[]>([]);
@@ -334,6 +340,63 @@ const AppContent: React.FC = () => {
     const activeProject = projects.find(p => p.id === activeProjectId) ?? null;
     const canUndo = activeProject ? activeProject.previewHistory.position > 0 : false;
     const canRedo = activeProject ? activeProject.previewHistory.position < activeProject.previewHistory.stack.length - 1 : false;
+
+    // --- Simple Hash Routing (so browser back/forward navigates UI, not code history) ---
+    type RouteState = {
+        view?: AppView;
+        previewPath?: string | null;
+        selectedFile?: string | null;
+    };
+
+    const parseHash = (): RouteState => {
+        const hash = window.location.hash.startsWith('#') ? window.location.hash.substring(1) : window.location.hash;
+        const params = new URLSearchParams(hash);
+        const route: RouteState = {};
+        const v = params.get('view') as AppView | null;
+        if (v) route.view = v;
+        const path = params.get('path');
+        if (path) route.previewPath = path;
+        const file = params.get('file');
+        if (file) route.selectedFile = file;
+        return route;
+    };
+
+    const pushHash = (state: RouteState) => {
+        const params = new URLSearchParams();
+        if (state.view) params.set('view', state.view);
+        if (state.previewPath) params.set('path', state.previewPath);
+        if (state.selectedFile) params.set('file', state.selectedFile);
+        const newHash = `#${params.toString()}`;
+        if (window.location.hash !== newHash) {
+            window.history.pushState(null, '', newHash);
+        }
+    };
+
+    // Initialize state from hash on first load
+    React.useEffect(() => {
+        const route = parseHash();
+        if (route.view) setView(route.view);
+        if (route.previewPath) setPreviewPath(route.previewPath);
+        if (route.selectedFile) setSelectedFile(route.selectedFile);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Reflect relevant UI state to URL hash
+    React.useEffect(() => {
+        pushHash({ view, previewPath, selectedFile });
+    }, [view, previewPath, selectedFile]);
+
+    // Handle browser back/forward
+    React.useEffect(() => {
+        const onPop = () => {
+            const route = parseHash();
+            if (route.view && route.view !== view) setView(route.view);
+            if (route.previewPath !== undefined && route.previewPath !== previewPath) setPreviewPath(route.previewPath || null);
+            if (route.selectedFile !== undefined && route.selectedFile !== selectedFile) setSelectedFile(route.selectedFile || null);
+        };
+        window.addEventListener('popstate', onPop);
+        return () => window.removeEventListener('popstate', onPop);
+    }, [view, previewPath, selectedFile]);
     
     // --- Theme Management ---
     React.useEffect(() => {
@@ -388,6 +451,24 @@ const AppContent: React.FC = () => {
                 if (isAdmin) return;
                 const currentUser = { email: firebaseUser.email, uid: firebaseUser.uid };
                 setUser(currentUser);
+                try {
+                    const prof = await getUserProfile(firebaseUser.uid);
+                    // Determine if essential fields missing
+                    const missingPhone = !prof?.phone;
+                    const missingAddress = !prof?.address;
+                    const missingDisplay = !prof?.displayName;
+                    if (missingPhone || missingAddress || missingDisplay) {
+                        setProfileDefaults({
+                            displayName: prof?.displayName || firebaseUser.displayName || firebaseUser.email.split('@')[0],
+                            firstName: (prof as any)?.firstName,
+                            lastName: (prof as any)?.lastName,
+                            phone: (prof as any)?.phone,
+                            address: (prof as any)?.address,
+                            photoURL: (prof as any)?.photoURL || firebaseUser.photoURL || undefined,
+                        });
+                        setShowProfileModal(true);
+                    }
+                } catch (e) { /* ignore */ }
             } else {
                 if (!isAdmin) {
                     setUser(null);
@@ -400,6 +481,32 @@ const AppContent: React.FC = () => {
         });
         return () => unsubscribe();
     }, [isAdmin]);
+
+    // Initialize telemetry once auth is initialized and we know language
+    React.useEffect(() => {
+        if (authInitialized) {
+            try { initTelemetry(language); } catch {}
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [authInitialized, language]);
+
+    const handleProfileModalSave = async (data: { displayName?: string; firstName?: string; lastName?: string; phone?: string; address?: string; photoURL?: string; }) => {
+        if (!user) return;
+        await updateUserProfile(user.uid, data);
+        setShowProfileModal(false);
+    };
+
+    // Check local upload server availability (banner reminder)
+    React.useEffect(() => {
+        let mounted = true;
+        const check = async () => {
+            const ok = await isUploadServerAvailable();
+            if (mounted) setUploadServerOnline(ok);
+        };
+        check();
+        const id = setInterval(check, 5000);
+        return () => { mounted = false; clearInterval(id); };
+    }, []);
 
     // Real-time project listener
     React.useEffect(() => {
@@ -609,15 +716,20 @@ const AppContent: React.FC = () => {
             const finalChatHistory = [...updatedChatHistory.slice(0, -1), finalModelMessage];
             
             if (response.files && response.files.length > 0) {
-                 const projectWithNewHistory = updateProjectHistory(activeProject, response.files);
-                 await updateProject(activeProjectId, {
-                    files: response.files,
+                // Merge new/updated files with existing project files instead of overwriting the entire list
+                const existingFilesMap = new Map<string, ProjectFile>(activeProject.files.map(f => [f.name, f]));
+                response.files.forEach(f => existingFilesMap.set(f.name, f));
+                const mergedFiles = Array.from(existingFilesMap.values()) as ProjectFile[];
+
+                const projectWithNewHistory = updateProjectHistory(activeProject, mergedFiles);
+                await updateProject(activeProjectId, {
+                    files: mergedFiles,
                     chatHistory: finalChatHistory,
                     previewHistory: projectWithNewHistory.previewHistory
                 });
                 refreshPreview();
             } else {
-                 await updateProject(activeProjectId, { chatHistory: finalChatHistory });
+                await updateProject(activeProjectId, { chatHistory: finalChatHistory });
             }
 
         } catch (error) {
@@ -817,6 +929,11 @@ const AppContent: React.FC = () => {
 
     return (
         <>
+            {!uploadServerOnline && (
+                <div className="bg-yellow-500/20 text-yellow-800 dark:text-yellow-300 text-center p-2 text-sm relative z-50">
+                    {t('upload.bannerOffline')}
+                </div>
+            )}
             {activeAnnouncement && (
                 <div className="bg-blue-600 text-white text-center p-2 text-sm relative z-50">
                     <span>{activeAnnouncement.message}</span>
@@ -871,6 +988,13 @@ const AppContent: React.FC = () => {
                 </div>
             </main>
             {toastMessage && <div className="fixed bottom-5 left-1/2 -translate-x-1/2 bg-gray-900 dark:bg-gray-200 text-gray-50 dark:text-gray-900 px-4 py-2 rounded-md shadow-lg z-50 animate-fade-in-scale">{toastMessage}</div>}
+            {showProfileModal && (
+                <ProfileCompletionModal
+                    onSave={handleProfileModalSave}
+                    onClose={() => setShowProfileModal(false)}
+                    defaultValues={profileDefaults}
+                />
+            )}
              <style>{`
                 @keyframes fade-in-scale {
                     from { opacity: 0; transform: translateX(-50%) scale(0.9); }

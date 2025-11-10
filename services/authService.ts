@@ -11,6 +11,8 @@ import {
   EmailAuthProvider,
   reauthenticateWithCredential,
   updatePassword,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from "firebase/auth";
 import { auth } from "../firebaseConfig";
 import { createUserProfile, deleteAllUserData, checkUserStatusByEmail } from "./firebaseService";
@@ -42,6 +44,44 @@ const getFirebaseErrorMessage = (error: any): string => {
         }
     }
     return 'An unknown error occurred.';
+};
+
+// Sign in with Google provider
+export const signInWithGoogle = async (): Promise<AuthResponse> => {
+  try {
+    const provider = new GoogleAuthProvider();
+    const result = await signInWithPopup(auth, provider);
+    if (result.user && result.user.email) {
+      const displayName = result.user.displayName || undefined;
+      const photoURL = result.user.photoURL || undefined;
+      let firstName: string | undefined;
+      let lastName: string | undefined;
+      if (displayName) {
+        const parts = displayName.trim().split(/\s+/);
+        firstName = parts[0];
+        lastName = parts.length > 1 ? parts.slice(1).join(' ') : undefined;
+      }
+      await createUserProfile(result.user.uid, result.user.email, { displayName, photoURL, firstName, lastName });
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('Google sign-in failed:', error);
+    return { success: false, message: getFirebaseErrorMessage(error) };
+  }
+};
+
+// Send password reset email to the provided address.
+export const requestPasswordResetEmail = async (email: string): Promise<AuthResponse> => {
+  try {
+    if (!email || !email.includes('@')) {
+      return { success: false, message: 'Please enter a valid email address.' };
+    }
+    await sendPasswordResetEmail(auth, email);
+    return { success: true, message: 'Password reset email sent. Please check your inbox.' };
+  } catch (error) {
+    console.error('Error sending password reset email:', error);
+    return { success: false, message: getFirebaseErrorMessage(error) };
+  }
 };
 
 export const signUp = async (email: string, pass: string): Promise<AuthResponse> => {

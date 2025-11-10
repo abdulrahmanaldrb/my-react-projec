@@ -39,6 +39,7 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
 }) => {
   const { t, language } = useLanguage();
   const [prompt, setPrompt] = React.useState('');
+  const [selectedSuggestions, setSelectedSuggestions] = React.useState<string[]>([]);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   
   const scrollToBottom = () => {
@@ -59,6 +60,17 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
     if (!isLoading) {
       onSuggestionClick(suggestion);
     }
+  };
+
+  const toggleSelectSuggestion = (s: string) => {
+    setSelectedSuggestions(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]);
+  };
+
+  const sendSelectedSuggestions = () => {
+    if (selectedSuggestions.length === 0 || isLoading) return;
+    const combined = selectedSuggestions.map(s => `- ${s}`).join('\n');
+    onSubmit(combined);
+    setSelectedSuggestions([]);
   };
 
   return (
@@ -122,17 +134,40 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
                         )}
                     </div>
                     {msg.suggestions && msg.suggestions.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                            {msg.suggestions.map((suggestion, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => handleSuggestion(suggestion)}
-                                    disabled={isLoading}
-                                    className="text-xs bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 px-2.5 py-1 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    {suggestion}
-                                </button>
-                            ))}
+                        <div className="mt-2 space-y-2">
+                          <div className="flex flex-wrap gap-2">
+                              {msg.suggestions.map((suggestion, i) => {
+                                  const selected = selectedSuggestions.includes(suggestion);
+                                  return (
+                                      <button
+                                          key={i}
+                                          onClick={() => toggleSelectSuggestion(suggestion)}
+                                          disabled={isLoading}
+                                          className={`text-xs px-2.5 py-1 rounded-full transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${selected ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200'}`}
+                                      >
+                                          {suggestion}
+                                      </button>
+                                  );
+                              })}
+                          </div>
+                          <div className="flex gap-2">
+                              <button
+                                  type="button"
+                                  onClick={sendSelectedSuggestions}
+                                  disabled={isLoading || selectedSuggestions.length === 0}
+                                  className="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded disabled:opacity-50"
+                              >
+                                  {t('chat.send') || 'Send selected'}
+                              </button>
+                              <button
+                                  type="button"
+                                  onClick={() => setSelectedSuggestions([])}
+                                  disabled={selectedSuggestions.length === 0}
+                                  className="text-xs bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 px-3 py-1 rounded disabled:opacity-50"
+                              >
+                                  {t('common.clear') || 'Clear'}
+                              </button>
+                          </div>
                         </div>
                     )}
                 </div>

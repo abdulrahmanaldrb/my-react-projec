@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>5AI Web Page Builder</title>
+    <title>صنع تطبيقات الويب بِ AI</title>
     <style>
       /* Basic reset and styles to make the app look good from the start */
       body, html {
@@ -43,6 +43,21 @@
         tailwind.config = {
             darkMode: 'class', // Enable class-based dark mode
         }
+    </script>
+    <!-- Syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!-- Load common languages explicitly to guarantee availability -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/typescript.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function(){
+        if (window.hljs && typeof window.hljs.highlightAll === 'function') {
+          window.hljs.highlightAll();
+        }
+      });
     </script>
     <link rel="stylesheet" href="https://aistudiocdn.com/allotment@^1.20.4/dist/style.css" />
     <script type="importmap">

@@ -9,6 +9,7 @@ import { ArrowLeftIcon, ArrowDownTrayIcon, PlusIcon, CheckBadgeIcon } from './ic
 import { incrementProjectDownloads } from '../services/firebaseService';
 import JSZip from 'jszip';
 import saveAs from 'file-saver';
+import { useLanguage } from '../App';
 
 interface MarketplaceProjectViewerProps {
     project: MarketplaceProject;
@@ -19,6 +20,7 @@ interface MarketplaceProjectViewerProps {
 }
 
 const MarketplaceProjectViewer: React.FC<MarketplaceProjectViewerProps> = ({ project, onBack, onClone, onViewProfile, showToast }) => {
+    const { t } = useLanguage();
     const [selectedFile, setSelectedFile] = React.useState<string | null>(null);
     const [previewPath, setPreviewPath] = React.useState<string | null>('index.html');
     const iframeRef = React.useRef<HTMLIFrameElement>(null);
@@ -93,31 +95,31 @@ const MarketplaceProjectViewer: React.FC<MarketplaceProjectViewerProps> = ({ pro
                 <header className="flex-shrink-0 bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between pr-4 h-[49px]">
                     <div className="flex items-center">
                         <button onClick={onBack} className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-md transition-colors m-2">
-                            <ArrowLeftIcon className="w-4 h-4" />
-                            <span>Back</span>
+                            <ArrowLeftIcon className="w-4 h-4 shrink-0" />
+                            <span>{t('marketplace.viewer.back')}</span>
                         </button>
                          <div className="border-l border-gray-200 dark:border-gray-700 ml-2 pl-4 mr-4">
                             <h2 className="text-md font-semibold text-gray-900 dark:text-white truncate" title={project.name}>{project.name}</h2>
                             <button onClick={() => onViewProfile(project.creatorId)} className="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400 hover:underline flex items-center gap-1">
-                                <span>by {anonymizeEmail(project.creatorEmail)}</span>
-                                {project.creatorIsVerified && <CheckBadgeIcon className="w-4 h-4 text-blue-500" title="Verified Creator" />}
+                                <span>{t('marketplace.by', { email: anonymizeEmail(project.creatorEmail) })}</span>
+                                {project.creatorIsVerified && <CheckBadgeIcon className="w-4 h-4 shrink-0 text-blue-500" title={t('marketplace.verifiedCreator')} />}
                             </button>
                         </div>
                         <div className="border-l border-gray-200 dark:border-gray-700 h-full pl-2 flex items-center">
-                            <button onClick={() => setActiveTab('reviews')} className={`px-4 py-2 text-sm h-full ${activeTab === 'reviews' ? 'bg-gray-200 dark:bg-gray-700' : 'text-gray-500 dark:text-gray-400'}`}>Overview & Reviews</button>
-                            <button onClick={() => setActiveTab('preview')} className={`px-4 py-2 text-sm h-full ${activeTab === 'preview' ? 'bg-gray-200 dark:bg-gray-700' : 'text-gray-500 dark:text-gray-400'}`}>Preview</button>
-                            <button onClick={() => setActiveTab('code')} className={`px-4 py-2 text-sm h-full ${activeTab === 'code' ? 'bg-gray-200 dark:bg-gray-700' : 'text-gray-500 dark:text-gray-400'}`}>Code</button>
-                            <button onClick={() => setActiveTab('chat')} className={`px-4 py-2 text-sm h-full ${activeTab === 'chat' ? 'bg-gray-200 dark:bg-gray-700' : 'text-gray-500 dark:text-gray-400'}`}>Chat</button>
+                            <button onClick={() => setActiveTab('reviews')} className={`px-4 py-2 text-sm h-full ${activeTab === 'reviews' ? 'bg-gray-200 dark:bg-gray-700' : 'text-gray-500 dark:text-gray-400'}`}>{t('marketplace.viewer.overviewReviews')}</button>
+                            <button onClick={() => setActiveTab('preview')} className={`px-4 py-2 text-sm h-full ${activeTab === 'preview' ? 'bg-gray-200 dark:bg-gray-700' : 'text-gray-500 dark:text-gray-400'}`}>{t('marketplace.viewer.preview')}</button>
+                            <button onClick={() => setActiveTab('code')} className={`px-4 py-2 text-sm h-full ${activeTab === 'code' ? 'bg-gray-200 dark:bg-gray-700' : 'text-gray-500 dark:text-gray-400'}`}>{t('marketplace.viewer.code')}</button>
+                            <button onClick={() => setActiveTab('chat')} className={`px-4 py-2 text-sm h-full ${activeTab === 'chat' ? 'bg-gray-200 dark:bg-gray-700' : 'text-gray-500 dark:text-gray-400'}`}>{t('marketplace.viewer.chat')}</button>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
                         {canDownload && (
                             <button onClick={handleDownload} className="flex items-center gap-2 px-3 py-1.5 text-sm bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-md">
-                                <ArrowDownTrayIcon className="w-4 h-4" /> Download
+                                <ArrowDownTrayIcon className="w-4 h-4 shrink-0" /> {t('marketplace.viewer.download')}
                             </button>
                         )}
                         <button onClick={() => onClone(project)} disabled={!canClone} className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:bg-gray-500 dark:disabled:bg-gray-600 disabled:cursor-not-allowed">
-                           <PlusIcon className="w-4 h-4" /> {canClone ? 'Clone to My Projects' : 'Cloning not allowed'}
+                           <PlusIcon className="w-4 h-4 shrink-0" /> {canClone ? t('marketplace.viewer.cloneToMy') : t('marketplace.viewer.cloningNotAllowed')}
                         </button>
                     </div>
                 </header>

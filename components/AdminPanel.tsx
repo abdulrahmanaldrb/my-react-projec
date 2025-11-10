@@ -3,9 +3,10 @@
 import * as React from 'react';
 // Fix: Import PendingProject type from types.ts instead of firebaseService.ts.
 // Fix: Removed AdminDashboardStats import from firebaseService as it is defined in types.ts.
-import { getAdminDashboardStats, getPendingSubmissions, adminLoadUserProjects, getReportedReviews, adminDeleteReview, adminDismissReport, adminGetPasswordResetRequests, adminSendMessageInResetRequest, adminUpdateResetRequestStatus, adminUpdateUserProfile, getUserProfile, adminGetFeedback, adminUpdateFeedbackStatus, adminGetAnnouncements, adminCreateAnnouncement, adminUpdateAnnouncement, adminDeleteAnnouncement, adminGetAIConfig, adminUpdateAIConfig } from '../services/firebaseService';
+import { getAdminDashboardStats, getPendingSubmissions, adminLoadUserProjects, getReportedReviews, adminDeleteReview, adminDismissReport, adminGetPasswordResetRequests, adminSendMessageInResetRequest, adminUpdateResetRequestStatus, adminUpdateUserProfile, getUserProfile, adminGetFeedback, adminUpdateFeedbackStatus, adminGetAnnouncements, adminCreateAnnouncement, adminUpdateAnnouncement, adminDeleteAnnouncement, adminGetAIConfig, adminUpdateAIConfig, adminLog, adminGetLogs } from '../services/firebaseService';
 // Fix: Imported ArrowLeftIcon to resolve missing component error.
 import { LoadingSpinner, LogOutIcon, UsersIcon, FolderIcon, RefreshIcon, CheckBadgeIcon, XMarkIcon, StoreIcon, FlagIcon, TrashIcon, CheckIcon, KeyIcon, ArrowLeftIcon, LightBulbIcon } from './icons';
+import { requestPasswordResetEmail } from '../services/authService';
 // Fix: Imported AdminDashboardStats from types.ts where it is defined.
 import { Project, PendingProject, ReportedReview, PasswordResetRequest, AdminUser, UserProfileData, AdminDashboardStats, Feedback, Announcement, AIConfig } from '../types';
 import AdminProjectViewer from './AdminProjectViewer';
@@ -13,7 +14,7 @@ import ManageUserModal from './ManageUserModal';
 import AnalyticsDashboard from './AnalyticsDashboard';
 import MarketplaceManagement from './MarketplaceManagement';
 
-type AdminView = 'dashboard' | 'user_projects' | 'project_viewer' | 'submissions' | 'reports' | 'password_requests' | 'analytics' | 'marketplace_mgmt' | 'feedback' | 'announcements' | 'ai_settings';
+type AdminView = 'dashboard' | 'user_projects' | 'project_viewer' | 'submissions' | 'reports' | 'password_requests' | 'analytics' | 'marketplace_mgmt' | 'feedback' | 'announcements' | 'ai_settings' | 'admin_logs';
 
 interface AdminPanelProps {
   onLogout: () => void;
@@ -60,8 +61,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
     const [feedback, setFeedback] = React.useState<Feedback[]>([]);
     const [announcements, setAnnouncements] = React.useState<Announcement[]>([]);
     const [aiConfig, setAiConfig] = React.useState<AIConfig | null>(null);
+    const [adminLogs, setAdminLogs] = React.useState<any[]>([]);
     const [isLoading, setIsLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
+    const [toast, setToast] = React.useState<{ message: string; type: 'success'|'error'|'info'} | null>(null);
 
     const [selectedUser, setSelectedUser] = React.useState<AdminUser | null>(null);
     const [userProjects, setUserProjects] = React.useState<Project[]>([]);
@@ -72,6 +75,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
 
     const [selectedPasswordRequest, setSelectedPasswordRequest] = React.useState<PasswordResetRequest | null>(null);
     const [adminReply, setAdminReply] = React.useState('');
+    const [isSendingReset, setIsSendingReset] = React.useState(false);
+    const [resetEmailStatus, setResetEmailStatus] = React.useState<string | null>(null);
     
     const [managingUser, setManagingUser] = React.useState<AdminUser | null>(null);
     const [managingUserProfile, setManagingUserProfile] = React.useState<UserProfileData | null>(null);
@@ -97,6 +102,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
             setFeedback(feedbackData);
             setAnnouncements(announcementsData);
             setAiConfig(aiConfigData);
+            // Load recent logs lazily if needed
+            try { const logs = await adminGetLogs(200); setAdminLogs(logs); } catch {}
         } catch (err) {
             console.error("Failed to fetch admin data:", err);
             setError("Could not load dashboard data.");
@@ -150,26 +157,59 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
 
     const handleDeleteReview = async (report: ReportedReview) => {
         if (!window.confirm("Are you sure you want to delete this review permanently? This cannot be undone.")) return;
-        await adminDeleteReview(report.projectId, report.reviewId, report.id);
-        fetchData(true); // Refresh
+        try {
+            await adminDeleteReview(report.projectId, report.reviewId, report.id);
+            await adminLog('delete_review', { projectId: report.projectId, reviewId: report.reviewId, reportId: report.id });
+            setToast({ message: 'Review deleted.', type: 'success' });
+            fetchData(true);
+        } catch (e) {
+            setToast({ message: 'Failed to delete review.', type: 'error' });
+        }
     };
 
     const handleDismissReport = async (report: ReportedReview) => {
-        await adminDismissReport(report.id, report.projectId, report.id);
-        fetchData(true); // Refresh
+        try {
+            await adminDismissReport(report.id, report.projectId, report.id);
+            await adminLog('dismiss_report', { reportId: report.id, projectId: report.projectId });
+            setToast({ message: 'Report dismissed.', type: 'success' });
+            fetchData(true);
+        } catch (e) {
+            setToast({ message: 'Failed to dismiss report.', type: 'error' });
+        }
     };
 
     const handleSendAdminReply = async () => {
         if (!adminReply.trim() || !selectedPasswordRequest) return;
-        await adminSendMessageInResetRequest(selectedPasswordRequest.id, adminReply);
-        setAdminReply('');
-        fetchData(true);
+        try {
+            await adminSendMessageInResetRequest(selectedPasswordRequest.id, adminReply);
+            await adminLog('password_request_reply', { requestId: selectedPasswordRequest.id });
+            setAdminReply('');
+            setToast({ message: 'Reply sent.', type: 'success' });
+            fetchData(true);
+        } catch (e) {
+            setToast({ message: 'Failed to send reply.', type: 'error' });
+        }
     };
 
     const handleUpdateRequestStatus = async (status: 'open' | 'closed') => {
         if (!selectedPasswordRequest) return;
-        await adminUpdateResetRequestStatus(selectedPasswordRequest.id, status);
-        fetchData(true);
+        try {
+            await adminUpdateResetRequestStatus(selectedPasswordRequest.id, status);
+            await adminLog('password_request_status', { requestId: selectedPasswordRequest.id, status });
+            setToast({ message: 'Request status updated.', type: 'success' });
+            fetchData(true);
+        } catch (e) {
+            setToast({ message: 'Failed to update status.', type: 'error' });
+        }
+    };
+
+    const handleSendResetEmail = async () => {
+        if (!selectedPasswordRequest?.userEmail) return;
+        setResetEmailStatus(null);
+        setIsSendingReset(true);
+        const res = await requestPasswordResetEmail(selectedPasswordRequest.userEmail);
+        setIsSendingReset(false);
+        setResetEmailStatus(res.message || (res.success ? 'Password reset email sent.' : 'Failed to send reset email.'));
     };
 
     const openManageModal = async (user: AdminUser) => {
@@ -184,9 +224,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
     };
 
     const handleSaveUser = async (userId: string, updates: Partial<UserProfileData>) => {
-        await adminUpdateUserProfile(userId, updates);
-        handleCloseManageModal();
-        fetchData(true); // Refresh data to show changes
+        try {
+            await adminUpdateUserProfile(userId, updates);
+            await adminLog('update_user_profile', { userId, updates });
+            handleCloseManageModal();
+            setToast({ message: 'User updated.', type: 'success' });
+            fetchData(true);
+        } catch (e) {
+            setToast({ message: 'Failed to update user.', type: 'error' });
+        }
     };
 
     const handleFeedbackStatusChange = async (feedbackId: string, status: Feedback['status']) => {
@@ -198,6 +244,42 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
             setError("Could not update feedback status.");
         }
     };
+
+    const AdminLogsView = () => (
+        <div>
+            <h2 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">Admin Logs</h2>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-sm text-left text-gray-600 dark:text-gray-300">
+                        <thead className="text-xs text-gray-700 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-700/50">
+                            <tr>
+                                <th scope="col" className="px-4 py-3">Action</th>
+                                <th scope="col" className="px-4 py-3">Admin</th>
+                                <th scope="col" className="px-4 py-3">Timestamp</th>
+                                <th scope="col" className="px-4 py-3">Payload</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {adminLogs.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="text-center py-8 text-gray-500 dark:text-gray-500">No logs found.</td>
+                                </tr>
+                            ) : (
+                                adminLogs.map((log: any) => (
+                                    <tr key={log.id} className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                        <td className="px-4 py-3 font-medium text-gray-900 dark:text-white whitespace-nowrap">{log.action}</td>
+                                        <td className="px-4 py-3">{log.adminEmail || log.adminId}</td>
+                                        <td className="px-4 py-3">{log.createdAt?.toDate ? log.createdAt.toDate().toLocaleString() : ''}</td>
+                                        <td className="px-4 py-3 max-w-[400px]"><pre className="text-xs bg-gray-100 dark:bg-gray-900 p-2 rounded overflow-auto">{JSON.stringify(log.payload, null, 2)}</pre></td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
 
     if (view === 'project_viewer' && selectedProject && selectedProjectContext) {
         return (
@@ -421,8 +503,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                     <>
                         <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                             <h3 className="font-semibold text-lg">{selectedPasswordRequest.userEmail}</h3>
-                            <button onClick={() => handleUpdateRequestStatus('closed')} className="px-3 py-1 text-sm bg-green-600 text-white rounded-md hover:bg-green-700">Mark as Resolved</button>
+                            <div className="flex items-center gap-2">
+                                <button onClick={handleSendResetEmail} disabled={isSendingReset} className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50">
+                                    {isSendingReset ? 'Sending…' : 'Send reset email'}
+                                </button>
+                                <button onClick={() => handleUpdateRequestStatus('closed')} className="px-3 py-1 text-sm bg-green-600 text-white rounded-md hover:bg-green-700">Mark as Resolved</button>
+                            </div>
                         </div>
+                        {resetEmailStatus && (
+                            <div className="px-4 pt-2 text-xs text-blue-700 dark:text-blue-300">{resetEmailStatus}</div>
+                        )}
                         <div className="flex-1 p-4 overflow-y-auto space-y-4">
                             {selectedPasswordRequest.messages?.map(msg => (
                                 <div key={msg.id} className={`flex ${msg.sender === 'admin' ? 'justify-end' : 'justify-start'}`}>
@@ -525,6 +615,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
             if (!newMessage.trim()) return;
             setIsSubmitting(true);
             await adminCreateAnnouncement(newMessage);
+            await adminLog('create_announcement', { message: newMessage });
             setNewMessage('');
             setIsSubmitting(false);
             fetchData(true);
@@ -532,12 +623,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
 
         const handleToggle = async (id: string, current: boolean) => {
             await adminUpdateAnnouncement(id, { isActive: !current });
+            await adminLog('toggle_announcement', { id, isActive: !current });
             fetchData(true);
         };
         
         const handleDelete = async (id: string) => {
             if (window.confirm("Delete this announcement?")) {
                 await adminDeleteAnnouncement(id);
+                await adminLog('delete_announcement', { id });
                 fetchData(true);
             }
         };
@@ -608,16 +701,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
         );
     };
 
-    const TABS = [
+    type TabItem = { id: AdminView; name: string; count?: number };
+    const TABS: TabItem[] = [
         { id: 'dashboard', name: 'Dashboard' },
         { id: 'analytics', name: 'Analytics' },
         { id: 'marketplace_mgmt', name: 'Marketplace' },
         { id: 'submissions', name: 'Submissions', count: pending.length },
         { id: 'feedback', name: 'Feedback', count: feedback.filter(f => f.status === 'new').length },
         { id: 'reports', name: 'Reports', count: reports.length },
-        { id: 'password_requests', name: 'Passwords', count: passwordRequests.filter(r=>r.status === 'open').length },
+        { id: 'password_requests', name: 'Reset Requests', count: passwordRequests.filter(r => r.status === 'open').length },
         { id: 'announcements', name: 'Announcements' },
         { id: 'ai_settings', name: 'AI Settings' },
+        { id: 'admin_logs', name: 'Admin Logs' },
     ];
     
     // Main Panel render
@@ -684,6 +779,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ onLogout }) => {
                     <>
                         {view === 'dashboard' && <MainDashboard />}
                         {view === 'analytics' && <AnalyticsDashboard />}
+                        {view === 'admin_logs' && <AdminLogsView />}
                         {view === 'marketplace_mgmt' && <MarketplaceManagement />}
                         {view === 'submissions' && <SubmissionsView />}
                         {view === 'user_projects' && <UserProjectsView />}

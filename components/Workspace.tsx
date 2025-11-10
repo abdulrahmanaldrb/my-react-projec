@@ -71,6 +71,7 @@ const Workspace: React.FC<WorkspaceProps> = ({ files, onFileSelect, selectedFile
             content={activeFile.content} 
             onSave={handleSave}
             readOnly={readOnly}
+            fileName={activeFile.name}
           />
         ) : (
           <div className="flex items-center justify-center h-full text-gray-500 bg-[#1e1e1e]">

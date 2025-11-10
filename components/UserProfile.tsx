@@ -3,6 +3,7 @@ import * as React from 'react';
 import { getProjectsByCreatorId, getUserProfile } from '../services/firebaseService';
 import { MarketplaceProject, UserProfileData } from '../types';
 import { LoadingSpinner, ArrowLeftIcon, FolderIcon, StarIcon, UserIcon, CheckBadgeIcon } from './icons';
+import { useLanguage } from '../App';
 
 interface UserProfileProps {
     userId: string;
@@ -32,6 +33,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId, onViewProject, onBack
     const [profileData, setProfileData] = React.useState<UserProfileData | null>(null);
     const [isLoading, setIsLoading] = React.useState(true);
     const [error, setError] = React.useState<string | null>(null);
+    const { t } = useLanguage();
     
     React.useEffect(() => {
         const fetchData = async () => {
@@ -86,39 +88,53 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId, onViewProject, onBack
                 ) : (
                     <>
                         <div className="bg-white dark:bg-gray-800 rounded-lg p-6 mb-8 flex flex-col sm:flex-row items-center gap-6 border border-gray-200 dark:border-gray-700">
-                            <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-full">
-                                <UserIcon className="w-16 h-16 text-blue-500 dark:text-blue-400" />
+                            <div className="flex items-center justify-center w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden border border-gray-300 dark:border-gray-600">
+                                {profileData?.photoURL ? (
+                                    <img src={profileData.photoURL} alt={profileData.displayName || profileData.email} className="w-full h-full object-cover" />
+                                ) : (
+                                    <UserIcon className="w-16 h-16 text-blue-500 dark:text-blue-400" />
+                                )}
                             </div>
                             <div className="flex-1 text-center sm:text-left">
                                 <div className="flex items-center justify-center sm:justify-start gap-2">
-                                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{profileData ? anonymizeEmail(profileData.email) : '...'}</h1>
+                                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                                        {profileData?.displayName || [profileData?.firstName, profileData?.lastName].filter(Boolean).join(' ') || (profileData?.email ? profileData.email.split('@')[0] : '...')}
+                                    </h1>
                                     {profileData?.isVerified && <CheckBadgeIcon className="w-6 h-6 text-blue-500" title="Verified User" />}
                                 </div>
-                                <p className="text-sm text-gray-500 dark:text-gray-400">Joined in {joinDate}</p>
+                                {profileData?.email && (
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">{anonymizeEmail(profileData.email)}</p>
+                                )}
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{t('userProfile.joinedOn', { date: joinDate })}</p>
                             </div>
                             <div className="flex gap-6 text-center border-t sm:border-t-0 sm:border-l border-gray-200 dark:border-gray-700 pt-4 sm:pt-0 sm:pl-6">
                                 <div>
                                     <p className="text-3xl font-bold text-gray-900 dark:text-white">{totalProjects}</p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Projects</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">{t('userProfile.projects')}</p>
                                 </div>
                                 <div>
                                     <p className="text-3xl font-bold text-gray-900 dark:text-white flex items-center justify-center gap-1">
                                         <StarIcon className="w-6 h-6 text-yellow-400" fill="currentColor" />
                                         {averageRating.toFixed(1)}
                                     </p>
-                                    <p className="text-sm text-gray-500 dark:text-gray-400">Avg. Rating</p>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">{t('userProfile.avgRating')}</p>
                                 </div>
                             </div>
                         </div>
 
-                        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Published Projects</h2>
+                        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">{t('userProfile.publishedProjects')}</h2>
                         {projects.length === 0 ? (
-                            <div className="text-center text-gray-500 bg-white dark:bg-gray-800 p-8 rounded-md border border-gray-200 dark:border-gray-700">This user has not published any projects yet.</div>
+                            <div className="text-center text-gray-500 bg-white dark:bg-gray-800 p-8 rounded-md border border-gray-200 dark:border-gray-700">{t('userProfile.noProjects')}</div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                                 {projects.map(project => (
-                                     <div key={project.id} className="bg-white dark:bg-gray-800 p-5 rounded-lg shadow-lg flex flex-col justify-between border border-gray-200 dark:border-gray-700 hover:border-blue-500 transition-colors">
-                                        <div>
+                                     <div key={project.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-lg flex flex-col justify-between border border-gray-200 dark:border-gray-700 hover:border-blue-500 transition-colors overflow-hidden">
+                                        {project.coverImage && (
+                                            <div className="w-full bg-gray-200 dark:bg-gray-700" style={{ aspectRatio: '16 / 9' }}>
+                                                <img src={project.coverImage} alt={project.name} className="w-full h-full object-cover" />
+                                            </div>
+                                        )}
+                                        <div className="p-5">
                                             <div className="flex items-start gap-3 mb-2">
                                                 <FolderIcon className="w-6 h-6 text-green-500 dark:text-green-400 mt-1 flex-shrink-0"/>
                                                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white break-words">{project.name}</h3>
@@ -138,11 +154,11 @@ const UserProfile: React.FC<UserProfileProps> = ({ userId, onViewProject, onBack
                                         </div>
                                         <button 
                                             onClick={() => onViewProject(project)}
-                                            className="mt-4 w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors font-semibold"
+                                            className="mt-2 mx-5 mb-5 w-auto self-start flex items-center justify-center gap-2 px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors font-semibold"
                                         >
-                                            Explore Project
+                                            {t('marketplace.explore')}
                                         </button>
-                                    </div>
+                                     </div>
                                 ))}
                             </div>
                         )}

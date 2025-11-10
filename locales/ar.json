@@ -109,7 +109,9 @@
       "statusApproved": "مشروعك مباشر في المتجر!",
       "statusPending": "مشروعك قيد المراجعة.",
       "statusRejected": "لم تتم الموافقة على إرسالك السابق. يمكنك إجراء تغييرات وإعادة الإرسال.",
-      "errorDescription": "يرجى تقديم وصف للمشروع."
+      "errorDescription": "يرجى كتابة وصف للمشروع.",
+      "coverImageLabel": "صورة الغلاف (اختياري)",
+      "coverHelp": "سيتم عرضها كصورة مصغّرة في المتجر."
     }
   },
   "settings": {
@@ -302,8 +304,12 @@
       "code": "الكود",
       "chat": "الدردشة",
       "download": "تحميل",
-      "clone": "نسخ إلى مشاريعي",
-      "cloningNotAllowed": "النسخ غير مسموح به"
+      "clone": "استنساخ إلى مشاريعي",
+      "cloningNotAllowed": "الاستنساخ غير مسموح",
+      "myStore": "متجري",
+      "myPublished": "مشاريعي المنشورة",
+      "loginToSee": "سجّل الدخول لعرض مشاريعك.",
+      "noPublished": "لا توجد مشاريع منشورة بعد."
   },
   "reviews": {
       "noDescription": "لا يوجد وصف.",

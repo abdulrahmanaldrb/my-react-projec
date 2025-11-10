@@ -7,7 +7,7 @@ import { Allotment } from 'allotment';
 import { Project, ChatMessage, ProjectFile } from '../types';
 // Fix: Renamed generateCode to generateCodeStream to match the exported function name.
 import { generateCodeStream } from '../services/geminiService';
-import { adminUpdateUserProject, approveSubmission, rejectSubmission } from '../services/firebaseService';
+import { adminUpdateUserProject, approveSubmission, rejectSubmission, adminLog } from '../services/firebaseService';
 
 import ChatPanel from './ChatPanel';
 import Workspace from './Workspace';
@@ -74,10 +74,18 @@ const AdminProjectViewer: React.FC<AdminProjectViewerProps> = ({ project, userId
         setIsEditingName(false);
     };
 
+    const [toast, setToast] = React.useState<{ message: string; type: 'success' | 'error' | 'info'} | null>(null);
+
     const handleFileContentChange = async (fileName: string, newContent: string) => {
         const newFiles = currentProject.files.map(f => f.name === fileName ? { ...f, content: newContent } : f);
         setCurrentProject(p => ({ ...p, files: newFiles }));
-        await adminUpdateUserProject(currentProject.id, { files: newFiles });
+        try {
+            await adminUpdateUserProject(currentProject.id, { files: newFiles });
+            await adminLog('admin_update_project_files', { projectId: currentProject.id, fileName });
+            setToast({ message: 'File saved.', type: 'success' });
+        } catch (e) {
+            setToast({ message: 'Failed to save file.', type: 'error' });
+        }
     };
 
     const handleSubmitPrompt = async (prompt: string) => {
@@ -144,6 +152,7 @@ const AdminProjectViewer: React.FC<AdminProjectViewerProps> = ({ project, userId
         });
         const blob = await zip.generateAsync({ type: 'blob' });
         saveAs(blob, `${currentProject.name.replace(/\s+/g, '_')}.zip`);
+        try { await adminLog('download_project_zip', { projectId: currentProject.id }); } catch {}
     };
     
     const handleApproval = async () => {
@@ -151,9 +160,12 @@ const AdminProjectViewer: React.FC<AdminProjectViewerProps> = ({ project, userId
         try {
             // Fix: Removed extra userId argument to match approveSubmission signature.
             await approveSubmission(currentProject);
+            await adminLog('approve_submission', { projectId: currentProject.id });
+            setToast({ message: 'Project approved and published.', type: 'success' });
             onBack();
         } catch (error) {
             console.error("Failed to approve submission", error);
+            setToast({ message: 'Failed to approve submission.', type: 'error' });
         } finally {
             setIsReviewActionLoading(false);
         }
@@ -164,9 +176,12 @@ const AdminProjectViewer: React.FC<AdminProjectViewerProps> = ({ project, userId
         try {
             // Fix: Removed extra userId argument to match rejectSubmission signature.
             await rejectSubmission(currentProject.id);
+            await adminLog('reject_submission', { projectId: currentProject.id });
+            setToast({ message: 'Submission rejected.', type: 'success' });
             onBack();
         } catch (error) {
             console.error("Failed to reject submission", error);
+            setToast({ message: 'Failed to reject submission.', type: 'error' });
         } finally {
             setIsReviewActionLoading(false);
         }
@@ -176,6 +191,11 @@ const AdminProjectViewer: React.FC<AdminProjectViewerProps> = ({ project, userId
 
     return (
         <main className="flex h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
+            {toast && (
+                <div className={`fixed top-4 right-4 z-[60] px-4 py-2 rounded shadow-lg ${toast.type==='success' ? 'bg-green-600 text-white' : toast.type==='error' ? 'bg-red-600 text-white' : 'bg-gray-800 text-white'}`} onAnimationEnd={() => setToast(null)}>
+                    {toast.message}
+                </div>
+            )}
             <div className={`w-[30%] max-w-[500px] min-w-[350px] flex-shrink-0 border-r border-gray-200 dark:border-gray-700 ${isPreviewFullScreen ? 'hidden' : 'flex'}`}>
                 <ChatPanel
                     messages={currentProject.chatHistory}

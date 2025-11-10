@@ -154,6 +154,35 @@ export const enTranslations = {
    "userProfile": {
       "myProfile": "My Profile",
       "joinedOn": "Joined on {date}"
+  },
+  "marketplace": {
+    "title": "Marketplace",
+    "backToEditor": "Back to Editor",
+    "discover": "Discover",
+    "browseAll": "Browse All",
+    "featured": "Featured Projects",
+    "highestRated": "Highest Rated",
+    "mostDownloaded": "Most Downloaded",
+    "mostRecent": "Most Recent",
+    "allProjects": "All Projects",
+    "searchPlaceholder": "Search all projects...",
+    "allCategories": "All Categories",
+    "noResults": "No projects match your search.",
+    "by": "by {email}",
+    "verifiedCreator": "Verified Creator",
+    "ratingTitle": "Average Rating",
+    "downloadsTitle": "Downloads",
+    "exploreProject": "Explore Project",
+    "viewer": {
+      "back": "Back",
+      "overviewReviews": "Overview & Reviews",
+      "preview": "Preview",
+      "code": "Code",
+      "chat": "Chat",
+      "download": "Download",
+      "cloneToMy": "Clone to My Projects",
+      "cloningNotAllowed": "Cloning not allowed"
+    }
   }
 };
 
@@ -311,5 +340,34 @@ export const arTranslations = {
   "userProfile": {
       "myProfile": "ملفي الشخصي",
       "joinedOn": "انضم في {date}"
+  },
+  "marketplace": {
+    "title": "المتجر",
+    "backToEditor": "العودة إلى المحرر",
+    "discover": "اكتشف",
+    "browseAll": "استعرض الكل",
+    "featured": "المشاريع المميزة",
+    "highestRated": "الأعلى تقييماً",
+    "mostDownloaded": "الأكثر تحميلاً",
+    "mostRecent": "الأحدث",
+    "allProjects": "كل المشاريع",
+    "searchPlaceholder": "ابحث في كل المشاريع...",
+    "allCategories": "كل الفئات",
+    "noResults": "لا توجد مشاريع مطابقة لبحثك.",
+    "by": "بواسطة {email}",
+    "verifiedCreator": "منشئ موثّق",
+    "ratingTitle": "متوسط التقييم",
+    "downloadsTitle": "التنزيلات",
+    "exploreProject": "استكشاف المشروع",
+    "viewer": {
+      "back": "رجوع",
+      "overviewReviews": "نظرة عامة والتقييمات",
+      "preview": "معاينة",
+      "code": "الكود",
+      "chat": "الدردشة",
+      "download": "تحميل",
+      "cloneToMy": "نسخ إلى مشاريعي",
+      "cloningNotAllowed": "النسخ غير مسموح"
+    }
   }
 };

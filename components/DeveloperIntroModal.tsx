@@ -14,7 +14,7 @@ const DeveloperIntroModal: React.FC<DeveloperIntroModalProps> = ({ isOpen, onClo
   const { t, language } = useLanguage();
   if (!isOpen) return null;
   
-  const developerImageUrl = "https://drive.google.com/uc?id=1183TF0xa-mgDnOOWrSpz8qBnWA3h9NRw";
+  const developerImageUrl = "./images/abood.png";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity duration-300 bg-black/60">
@@ -70,3 +70,4 @@ const DeveloperIntroModal: React.FC<DeveloperIntroModalProps> = ({ isOpen, onClo
 };
 
 export default DeveloperIntroModal;
+ 
